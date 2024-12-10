@@ -67,13 +67,12 @@ const toggleGoalCompletion = async (req, res) => {
       'UPDATE learning_goals SET is_completed = ? WHERE id = ? AND user_id = ?',
       [is_completed, goalId, userId]
     );
-    res.status(200).json({ success: true, message: '목표 상태가 업데이트되었습니다.' });
+
+    res.status(200).json({ success: true });
   } catch (error) {
-    console.error('목표 상태 변경 중 오류', error);
-    res.status(500).json({ success: false, message: '목표 상태를 업데이트하는 중 문제가 발생했습니다.' });
+    res.status(500).json({ success: false });
   }
 };
-
 module.exports = {
   getGoals,
   addGoal,

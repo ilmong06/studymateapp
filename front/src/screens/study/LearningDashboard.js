@@ -19,13 +19,11 @@ const LearningDashboard = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState("");
-  const [checkedGoals, setCheckedGoals] = useState({}); // 체크 상태를 저장
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-
         const token = await SecureStore.getItemAsync("userToken");
         if (!token) {
           Alert.alert("오류", "로그인 토큰을 찾을 수 없습니다.");
@@ -90,11 +88,30 @@ const LearningDashboard = () => {
     }
   };
 
-  const toggleCheckbox = (id) => {
-    setCheckedGoals((prevState) => ({
-      ...prevState,
-      [id]: !prevState[id],
-    }));
+  const toggleCheckbox = async (goalId, currentStatus) => {
+    try {
+      const token = await SecureStore.getItemAsync("userToken");
+
+      const response = await api.put(
+        `/api/study/goals/${goalId}`,
+        { is_completed: !currentStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response?.data?.success) {
+        Alert.alert("변경 완료", "체크 상태가 저장되었습니다.");
+        setGoals(
+          goals.map((goal) =>
+            goal.id === goalId ? { ...goal, is_completed: !currentStatus } : goal
+          )
+        );
+      } else {
+        Alert.alert("오류", "체크 상태 저장 중 문제가 발생했습니다.");
+      }
+    } catch (error) {
+      console.error("Checkbox toggle error:", error);
+      Alert.alert("오류", "서버와 연결 중 문제가 발생했습니다.");
+    }
   };
 
   if (loading) {
@@ -111,9 +128,9 @@ const LearningDashboard = () => {
       <Calendar
         onDayPress={handleDayPress}
         markedDates={{
-          [selectedDate]: { selected: true, selectedColor: "#007BFF" },
+          [selectedDate]: { selected: true, selectedColor: '#007BFF' },
         }}
-        style={styles.calendar}
+        style={{ height: 350, width: '100%' }} // 캘린더 높이와 너비를 명시적으로 지정
       />
       <TextInput
         style={styles.input}
@@ -132,15 +149,10 @@ const LearningDashboard = () => {
         goals.map((goal) => (
           <View key={goal.id} style={styles.goalItem}>
             <Checkbox
-              status={checkedGoals[goal.id] ? "checked" : "unchecked"}
-              onPress={() => toggleCheckbox(goal.id)}
+              status={goal.is_completed ? "checked" : "unchecked"}
+              onPress={() => toggleCheckbox(goal.id, goal.is_completed)}
             />
-            <Text
-              style={[
-                styles.goalText,
-                checkedGoals[goal.id] && styles.strikethrough, // 체크 상태에서 적용
-              ]}
-            >
+            <Text style={goal.is_completed ? styles.strikethrough : null}>
               {goal.goal_name}
             </Text>
           </View>
@@ -160,10 +172,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 10,
-    color: "#333",
-  },
-  calendar: {
-    marginBottom: 20,
   },
   input: {
     borderWidth: 1,
@@ -178,32 +186,13 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     alignItems: "center",
   },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  subHeader: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
-    color: "#333",
-  },
-  noGoals: {
-    fontSize: 14,
-    color: "#555",
-  },
   goalItem: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 10,
   },
-  goalText: {
-    fontSize: 14,
-    marginLeft: 10,
-  },
   strikethrough: {
-    textDecorationLine: "line-through", // 취소선 스타일
-    color: "#555",
+    textDecorationLine: "line-through",
   },
 });
 
