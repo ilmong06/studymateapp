@@ -7,7 +7,7 @@ const chatRoutes = require('./routes/chatRoutes');
 
 const app = express();
 const corsOptions = {
-    origin: 'http://172.20.10.2:19006'
+    origin: 'http://10.20.62.11:19006'
 }
 app.use(cors());
 app.use(express.json());
@@ -15,6 +15,7 @@ app.use(bodyParser.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
+
 app.use(cors(corsOptions));
 
 const PORT = process.env.PORT || 3000;

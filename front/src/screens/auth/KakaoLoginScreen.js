@@ -36,7 +36,7 @@ const KakaoLoginScreen = ({ navigation }) => {
             // 홈 화면으로 이동
             navigation.reset({
                 index: 0,
-                routes: [{ name: 'HomeTabs' }],
+                routes: [{ name: 'LearningDashboard' }],
             });
         } catch (error) {
             console.error('Error connecting to backend:', error.response?.data || error.message);
@@ -51,7 +51,7 @@ const KakaoLoginScreen = ({ navigation }) => {
                 scalesPageToFit={false}
                 style={{ marginTop: 30 }}
                 source={{
-                    uri: 'https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=a39da3f1c5f70e11c3034c5aa7116868&redirect_uri=https://auth.expo.io/@wovlf02/frontend',
+                    uri: 'https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=7317bfffc640104e8639a3af548459de&redirect_uri=https://auth.expo.io/@ilmong/frontend',
                 }}
                 injectedJavaScript={`window.ReactNativeWebView.postMessage("this is message from web");`}
                 javaScriptEnabled={true}
