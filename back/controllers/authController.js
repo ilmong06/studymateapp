@@ -11,7 +11,7 @@ const userInfoUrl = "https://openapi.naver.com/v1/nid/me";
 
 // CORS 설정 추가
 const corsOptions = {
-    origin: 'http://121.127.165.43:19006', // 프론트엔드 주소
+    origin: 'http://10.20.62.11:19006', // 프론트엔드 주소
     methods: 'GET,POST',
 };
 
@@ -235,7 +235,7 @@ const kakaoLogin = async (req, res) => {
             profileImage,    // profile_image_url
         ]);
 
-        // JWT 토큰 생성
+        // JWT 토큰 생성f\
         const token = generateAccessToken({ id: userId, username: nickname, email });
 
         res.status(200).json({

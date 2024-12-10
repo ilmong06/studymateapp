@@ -51,7 +51,7 @@ const NaverLoginScreen = ({ navigation }) => {
                 scalesPageToFit={false}
                 style={{ marginTop: 30 }}
                 source={{
-                    uri: 'https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=ROb3HJTEYSeYsldT26BA&redirect_uri=https://auth.expo.io/@wovlf02/frontend',
+                     uri: 'https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=a4_AmIicAuFxLgBnqQSk&redirect_uri=https://auth.expo.io/@ilmong666/frontend',
                 }}
                 injectedJavaScript={`window.ReactNativeWebView.postMessage("this is message from web");`}
                 javaScriptEnabled={true}

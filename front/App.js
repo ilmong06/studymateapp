@@ -14,6 +14,7 @@ import HomeScreen from './src/screens/home/HomeScreen';
 import NaverLoginScreen from "./src/screens/auth/NaverLoginScreen ";
 import KakaoLoginScreen from "./src/screens/auth/KakaoLoginScreen";
 import ChatListScreen from './src/screens/chat/ChatListScreen';
+import LearningDashboard from './src/screens/study/LearningDashboard';
 
 // Navigation Stacks
 const Stack = createStackNavigator();
@@ -71,6 +72,8 @@ const AppNavigator = () => {
 
             {/* Main App Flow */}
             <Stack.Screen name="HomeTabs" component={HomeTabs} />
+            <Stack.Screen name="HomeScreen" component={HomeScreen} />
+            <Stack.Screen name="LearningDashboard" component={LearningDashboard} />
         </Stack.Navigator>
     );
 };
