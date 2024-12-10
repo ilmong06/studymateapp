@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import api from "../../api/api";
+import { Checkbox } from "react-native-paper";
 
 const LearningDashboard = () => {
   const [goals, setGoals] = useState([]);
@@ -53,29 +54,6 @@ const LearningDashboard = () => {
     fetchData();
   }, []);
 
-  const addGoal = async () => {
-    if (!newGoal.trim()) return Alert.alert("유효성 검사 오류", "목표를 입력해주세요.");
-    try {
-      const token = await SecureStore.getItemAsync("userToken");
-      const response = await api.post(
-        "/api/study/goals",
-        {
-          goal_name: newGoal,
-          goal_type: goalType,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      setGoals([...goals, response.data]);
-      setNewGoal("");
-    } catch (error) {
-      console.error("목표 추가 오류:", error);
-      Alert.alert("오류", "새 목표를 추가하는데 실패했습니다.");
-    }
-  };
-
   const toggleGoalCompletion = async (goalId, isCompleted) => {
     try {
       const token = await SecureStore.getItemAsync("userToken");
@@ -94,6 +72,28 @@ const LearningDashboard = () => {
       );
     } catch (error) {
       Alert.alert("오류", "목표 상태 변경 중 문제가 발생했습니다.");
+    }
+  };
+
+  const addGoal = async () => {
+    if (!newGoal.trim()) return Alert.alert("유효성 검사 오류", "목표를 입력해주세요.");
+    try {
+      const token = await SecureStore.getItemAsync("userToken");
+      const response = await api.post(
+        "/api/study/goals",
+        {
+          goal_name: newGoal,
+          goal_type: goalType,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      setGoals([...goals, response.data]);
+      setNewGoal("");
+    } catch (error) {
+      Alert.alert("오류", "새 목표를 추가하는데 실패했습니다.");
     }
   };
 
@@ -122,20 +122,26 @@ const LearningDashboard = () => {
           data={goals}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
-            <Text
-              style={item.is_completed ? styles.completedGoal : styles.incompleteGoal}
-              onPress={() => toggleGoalCompletion(item.id, item.is_completed)}
-            >
-              {item.goal_name} ({item.goal_type})
-            </Text>
+            <View style={styles.goalItem}>
+              <Checkbox
+                status={item.is_completed ? "checked" : "unchecked"}
+                onPress={() => toggleGoalCompletion(item.id, item.is_completed)}
+                color={"#007BFF"}
+              />
+              <Text
+                style={item.is_completed ? styles.completedGoal : styles.incompleteGoal}
+              >
+                {item.goal_name} ({item.goal_type})
+              </Text>
+            </View>
           )}
         />
       </View>
     </View>
   );
 };
+
 const styles = StyleSheet.create({
-  // 전체 컨테이너 스타일
   container: {
     flex: 1,
     padding: 20,
@@ -157,8 +163,8 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginBottom: 10,
     fontSize: 16,
-    color: "#000", // 글씨 색상 검정색
-    backgroundColor: "#fff", // 입력창 배경을 명시적으로 흰색으로 설정
+    color: "#000",
+    backgroundColor: "#fff",
   },
   button: {
     backgroundColor: "#007BFF",
@@ -173,24 +179,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   goalItem: {
-    padding: 10,
-    marginBottom: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
   },
   completedGoal: {
     textDecorationLine: "line-through",
     color: "green",
     fontSize: 16,
+    marginLeft: 5,
   },
   incompleteGoal: {
     color: "#333",
     fontSize: 16,
-  },
-  loading: {
-    marginTop: 20,
+    marginLeft: 5,
   },
 });
-
 
 export default LearningDashboard;
