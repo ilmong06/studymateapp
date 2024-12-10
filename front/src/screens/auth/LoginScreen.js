@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -12,168 +11,113 @@ import {
     KeyboardAvoidingView,
     Platform,
     Image,
-    Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+import api from '../../api/api';
 
-const BASE_URL = '  http://000.000.000.000:3000';
+// 소셜 로그인 이미지 import
+import NaverLogo from '../../../assets/naver.jpg';
+import KakaoLogo from '../../../assets/kakao.png';
 
 
-// axios 인스턴스 생성
-const api = axios.create({
-    baseURL: BASE_URL,
-    timeout: 10000,
-    headers: {
-        'Content-Type': 'application/json'
-    }
-});
-
-const LoginScreen = ({ navigation, route }) => {
-    const [formData, setFormData] = useState({
-        username: route.params?.userId || '',
-        password: ''
-    });
+const LoginScreen = ({ navigation }) => {
+    const [formData, setFormData] = useState({ username: '', password: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [errors, setErrors] = useState({
-        username: '',
-        password: ''
-    });
 
-    // 애니메이션 값
-    const [fadeAnim] = useState(new Animated.Value(0));
-    const [scaleAnim] = useState(new Animated.Value(0.95));
-
-    useEffect(() => {
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 500,
-                useNativeDriver: true
-            }),
-            Animated.spring(scaleAnim, {
-                toValue: 1,
-                friction: 8,
-                tension: 40,
-                useNativeDriver: true
-            })
-        ]).start();
-    }, []);
-
+    // 폼 유효성 검사
     const validateForm = () => {
-        const newErrors = {};
-        if (!formData.username.trim()) {
-            newErrors.username = '아이디를 입력해주세요';
+        if (!formData.username.trim() || !formData.password.trim()) {
+            Alert.alert('오류', '아이디와 비밀번호를 입력해주세요.');
+            return false;
         }
-        if (!formData.password) {
-            newErrors.password = '비밀번호를 입력해주세요';
-        }
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+        return true;
     };
 
-    // 기존 코드에서 handleLogin 함수만 수정
-    // const handleLogin = async () => {
-    //     if (!validateForm()) return;
-
-    //     try {
-    //         setLoading(true);
-    //         const response = await api.post('/api/auth/login', {
-    //             userId: formData.username.trim(),
-    //             password: formData.password
-    //         });
-
-    //         if (response.data.success) {
-    //             // JWT 토큰 저장
-    //             await AsyncStorage.setItem('userToken', response.data.accessToken);
-
-    //             // 모든 API 요청에 토큰 자동 포함되도록 설정
-    //             api.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
-
-    //             // 사용자 정보 저장
-    //             await AsyncStorage.setItem('userData', JSON.stringify(response.data.user));
-
-    //             navigation.navigate('MainTab');
-    //         }
-    //     } catch (error) {
-    //         console.error('로그인 오류:', error);
-    //         Alert.alert(
-    //             '로그인 실패',
-    //             error.response?.data?.message || '로그인에 실패했습니다.'
-    //         );
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // };
+    // 로그인 처리
     const handleLogin = async () => {
         if (!validateForm()) return;
-    
+
         try {
             setLoading(true);
             const response = await api.post('/api/auth/login', {
-                userId: formData.username.trim(),
-                password: formData.password
+                username: formData.username.trim(),
+                password: formData.password.trim(),
             });
-    
+
             if (response.data.success) {
-                // JWT 토큰 저장
-                await AsyncStorage.setItem('userToken', response.data.accessToken);
-    
-                // 모든 API 요청에 토큰 자동 포함되도록 설정
-                api.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
-    
-                // 사용자 정보 저장
-                await AsyncStorage.setItem('userData', JSON.stringify(response.data.user));
-    
-                // 홈 화면으로 이동하며 JWT 토큰 전달
-                navigation.navigate('HomeMain', { token: response.data.accessToken });
+                const { accessToken, refreshToken } = response.data;
+
+                // 토큰 저장
+                await SecureStore.setItemAsync('userToken', accessToken);
+                await SecureStore.setItemAsync('refreshToken', refreshToken);
+
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'HomeTabs' }], // Stack.Navigator에 등록된 이름과 일치시킵니다.
+                });
+            } else {
+                Alert.alert('로그인 실패', response.data.message);
             }
         } catch (error) {
-            console.error('로그인 오류:', error);
-            Alert.alert(
-                '로그인 실패',
-                error.response?.data?.message || '로그인에 실패했습니다.'
-            );
+            console.log('로그인 오류:', error);
+            Alert.alert('로그인 실패', '아이디 또는 비밀번호가 일치하지 않습니다.');
         } finally {
             setLoading(false);
         }
     };
-    
-    useEffect(() => {
-        const checkAutoLogin = async () => {
-            try {
-                const [autoLogin, token, refreshToken] = await AsyncStorage.multiGet([
-                    'autoLogin',
-                    'userToken',
-                    'refreshToken'
-                ]);
 
-                if (autoLogin[1] === 'true' && token[1] && refreshToken[1]) {
-                    const response = await api.get('/api/auth/status', {
-                        headers: { Authorization: `Bearer ${token[1]}` }
-                    });
 
-                    if (response.data.success) {
-                        navigation.reset({
-                            index: 0,
-                            routes: [{ name: 'Home' }]
-                        });
-                    }
-                }
-            } catch (error) {
-                console.log('자동 로그인 체크 실패:', error);
-            }
-        };
-        checkAutoLogin();
-    }, []);
-    const handleKakaoLogin = () => {
-        navigation.navigate('KakaoLoginScreen');
+    // useEffect(() => {
+    //     const checkAutoLogin = async () => {
+    //         try {
+    //             // SecureStore에서 토큰 가져오기
+    //             const accessToken = await SecureStore.getItemAsync('userToken');
+    //             const refreshToken = await SecureStore.getItemAsync('refreshToken');
+    //
+    //             if (!accessToken) {
+    //                 console.log('Access Token이 없습니다. Refresh Token 확인 중...');
+    //                 if (!refreshToken) {
+    //                     console.log('Refresh Token도 없습니다. 자동 로그인 중단.');
+    //                     return; // 토큰이 없으면 자동 로그인을 수행하지 않음
+    //                 }
+    //
+    //                 // Access Token 갱신 시도
+    //                 const response = await api.post('/auth/refresh', { refreshToken });
+    //
+    //                 if (response.data && response.data.success) {
+    //                     const newAccessToken = response.data.accessToken;
+    //                     await SecureStore.setItemAsync('userToken', newAccessToken);
+    //                     console.log('Access Token 갱신 성공.');
+    //                 } else {
+    //                     console.log('Refresh Token 갱신 실패:', response.data.message);
+    //                     return;
+    //                 }
+    //             }
+    //
+    //             // Access Token이 존재하거나 갱신되었다면 홈 화면으로 이동
+    //             navigation.reset({
+    //                 index: 0,
+    //                 routes: [{ name: 'HomeTabs' }], // Stack.Navigator에 등록된 이름과 일치시킵니다.
+    //             });
+    //         } catch (error) {
+    //             console.error('자동 로그인 체크 실패:', error);
+    //         }
+    //     };
+    //
+    //     checkAutoLogin();
+    // }, []);
+
+
+
+    // 소셜 로그인
+    const handleNaverLogin = () => {
+        navigation.navigate('NaverLogin');
     };
 
-    const handleNaverLogin = () => {
-        navigation.navigate('NaverLoginScreen');
+    const handleKakaoLogin = () => {
+        navigation.navigate('KakaoLogin');
     };
 
     return (
@@ -182,62 +126,43 @@ const LoginScreen = ({ navigation, route }) => {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.formContainer}
             >
-                <Animated.View style={[
-                    styles.contentContainer,
-                    {
-                        opacity: fadeAnim,
-                        transform: [{ scale: scaleAnim }]
-                    }
-                ]}>
+                <View style={styles.contentContainer}>
                     <Text style={styles.title}>로그인</Text>
 
                     {/* 아이디 입력 */}
                     <View style={styles.inputContainer}>
                         <Ionicons name="person-outline" size={20} color="#666" />
                         <TextInput
-                            style={[styles.input, errors.username && styles.inputError]}
+                            style={styles.input}
                             placeholder="아이디를 입력하세요"
                             value={formData.username}
-                            onChangeText={(text) => {
-                                setFormData(prev => ({ ...prev, username: text }));
-                                setErrors(prev => ({ ...prev, username: '' }));
-                            }}
+                            onChangeText={(text) =>
+                                setFormData((prev) => ({ ...prev, username: text }))
+                            }
                             autoCapitalize="none"
-                            editable={!loading}
                         />
                     </View>
-                    {errors.username && (
-                        <Text style={styles.errorText}>{errors.username}</Text>
-                    )}
 
                     {/* 비밀번호 입력 */}
                     <View style={styles.inputContainer}>
                         <Ionicons name="lock-closed-outline" size={20} color="#666" />
                         <TextInput
-                            style={[styles.input, errors.password && styles.inputError]}
+                            style={styles.input}
                             placeholder="비밀번호를 입력하세요"
                             value={formData.password}
-                            onChangeText={(text) => {
-                                setFormData(prev => ({ ...prev, password: text }));
-                                setErrors(prev => ({ ...prev, password: '' }));
-                            }}
+                            onChangeText={(text) =>
+                                setFormData((prev) => ({ ...prev, password: text }))
+                            }
                             secureTextEntry={!showPassword}
-                            editable={!loading}
                         />
-                        <TouchableOpacity
-                            onPress={() => setShowPassword(!showPassword)}
-                            disabled={loading}
-                        >
+                        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                             <Ionicons
-                                name={showPassword ? "eye-outline" : "eye-off-outline"}
+                                name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                                 size={20}
                                 color="#666"
                             />
                         </TouchableOpacity>
                     </View>
-                    {errors.password && (
-                        <Text style={styles.errorText}>{errors.password}</Text>
-                    )}
 
                     {/* 로그인 버튼 */}
                     <TouchableOpacity
@@ -252,61 +177,16 @@ const LoginScreen = ({ navigation, route }) => {
                         )}
                     </TouchableOpacity>
 
-                    {/* 소셜 로그인 버튼 */}
-                
+                    {/* 소셜 로그인 */}
                     <View style={styles.socialContainer}>
-                <TouchableOpacity
-                    style={styles.socialButton}
-                    onPress={handleKakaoLogin}
-                    disabled={loading}
-                >
-                    <Image source={require('../../../assets/kakao.png')} style={styles.socialLogo} />
-                </TouchableOpacity>
-
-                {loading && <ActivityIndicator size="large" color="#1A73E8" />}
-                <TouchableOpacity
-                style={styles.socialButton}
-                onPress={handleNaverLogin}
-                disabled={loading}
-                >
-                <Image source={require('../../../assets/naver.jpg')}style={styles.socialLogo} />
-                </TouchableOpacity>
-
-                {loading && <ActivityIndicator size="large" color="#1A73E8" />}
-                    
-                </View>
-
-                <View style={styles.bottomContainer}>
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('SignUp')}
-                        disabled={loading}
-                    >
-                        <Text style={styles.bottomText}>회원가입</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('FindAccount')}
-                        disabled={loading}
-                    >
-                        <Text style={styles.bottomText}>아이디/비밀번호 찾기</Text>
-                    </TouchableOpacity>
-                </View>
-
-                    {/* 하단 링크 */}
-                    <View style={styles.bottomContainer}>
-                        <TouchableOpacity
-                            onPress={() => navigation.navigate('SignUp')}
-                            disabled={loading}
-                        >
-                            <Text style={styles.bottomText}>회원가입</Text>
+                        <TouchableOpacity style={styles.socialButton} onPress={handleNaverLogin}>
+                            <Image source={NaverLogo} style={styles.socialLogo} />
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => navigation.navigate('FindAccount')}
-                            disabled={loading}
-                        >
-                            <Text style={styles.bottomText}>아이디/비밀번호 찾기</Text>
+                        <TouchableOpacity style={styles.socialButton} onPress={handleKakaoLogin}>
+                            <Image source={KakaoLogo} style={styles.socialLogo} />
                         </TouchableOpacity>
                     </View>
-                </Animated.View>
+                </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -320,17 +200,16 @@ const styles = StyleSheet.create({
     formContainer: {
         flex: 1,
         padding: 20,
-        paddingTop: 60,
         justifyContent: 'center',
     },
     contentContainer: {
         width: '100%',
     },
     title: {
-        fontSize: 35,
+        fontSize: 32,
         fontWeight: 'bold',
         textAlign: 'center',
-        marginBottom: 70,
+        marginBottom: 30,
         color: '#1A1A1A',
     },
     inputContainer: {
@@ -339,7 +218,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#ddd',
         borderRadius: 8,
-        paddingHorizontal: 15,
+        paddingHorizontal: 10,
         marginBottom: 15,
         height: 50,
     },
@@ -348,59 +227,37 @@ const styles = StyleSheet.create({
         marginLeft: 10,
         fontSize: 16,
     },
-    inputError: {
-        borderColor: '#FF3B30',
-    },
-    errorText: {
-        color: '#FF3B30',
-        fontSize: 12,
-        marginTop: -10,
-        marginBottom: 10,
-        marginLeft: 15,
-    },
     loginButton: {
         backgroundColor: '#1A73E8',
         borderRadius: 8,
         height: 50,
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 10,
+        marginTop: 20,
     },
     buttonDisabled: {
         opacity: 0.5,
     },
     loginButtonText: {
         color: '#fff',
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: 'bold',
     },
     socialContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 30,
+        marginTop: 20,
         gap: 20,
     },
     socialButton: {
         width: 40,
         height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     socialLogo: {
         width: '100%',
         height: '100%',
         resizeMode: 'contain',
-    },
-    bottomContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 30,
-    },
-    bottomText: {
-        color: '#007AFF',
-        fontSize: 14,
-        fontWeight: '600',
     },
 });
 

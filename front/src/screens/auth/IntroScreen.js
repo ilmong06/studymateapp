@@ -1,5 +1,4 @@
-// IntroScreen.js
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -7,9 +6,47 @@ import {
     StyleSheet,
     SafeAreaView,
     Image,
+    ActivityIndicator,
 } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+import api from '../../api/api';
 
 const IntroScreen = ({ navigation }) => {
+    const [loading, setLoading] = useState(true);
+
+    // JWT 토큰 유효성 검사
+    const checkToken = async () => {
+        try {
+            const token = await SecureStore.getItemAsync('userToken');
+            if (token) {
+                const response = await api.get('/api/auth/check-token'); // 토큰 유효성 검증 API 호출
+                if (response.data.success) {
+                    // 유효하면 홈 화면으로 이동
+                    navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'Home' }],
+                    });
+                    return;
+                }
+            }
+        } catch (error) {
+            console.log('자동 로그인 실패:', error.message);
+        }
+        setLoading(false); // 유효하지 않으면 로딩 종료
+    };
+
+    useEffect(() => {
+        checkToken();
+    }, []);
+
+    if (loading) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <ActivityIndicator size="large" color="#0066FF" />
+            </SafeAreaView>
+        );
+    }
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.content}>

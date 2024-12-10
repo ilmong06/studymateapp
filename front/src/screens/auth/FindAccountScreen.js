@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -7,22 +7,10 @@ import {
     StyleSheet,
     Alert,
     ActivityIndicator,
-    BackHandler, Platform,
+    BackHandler,
 } from 'react-native';
-import {authAPI} from "../../services/api";
+import api from '../../api/api';
 import Icon from "react-native-vector-icons/Feather";
-import axios from 'axios';
-
-const BASE_URL = 'http://000.000.000.000:3000';
-
-// axios 인스턴스 생성
-const api = axios.create({
-    baseURL: BASE_URL,
-    timeout: 10000,
-    headers: {
-        'Content-Type': 'application/json'
-    }
-});
 
 const FindAccountScreen = ({ navigation }) => {
     const [activeTab, setActiveTab] = useState('id');
@@ -145,6 +133,15 @@ const FindAccountScreen = ({ navigation }) => {
                             onPress: () => navigation.navigate('Login', { userId: response.data.userId })
                         }]
                     );
+                } else if (activeTab === 'password') {
+                    Alert.alert(
+                        '인증 완료',
+                        '인증이 완료되었습니다. 비밀번호를 재설정하세요.',
+                        [{
+                            text: '확인',
+                            onPress: handleResetPassword
+                        }]
+                    );
                 }
             }
         } catch (error) {
@@ -173,8 +170,10 @@ const FindAccountScreen = ({ navigation }) => {
             userId: formData.userId.trim()
         });
     };
+
     return (
         <View style={styles.container}>
+            {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <Icon name="arrow-left" size={24} color="#333" />
@@ -183,6 +182,7 @@ const FindAccountScreen = ({ navigation }) => {
                 <View style={{ width: 24 }} />
             </View>
 
+            {/* Tabs */}
             <View style={styles.tabContainer}>
                 <TouchableOpacity
                     style={[styles.tab, activeTab === 'id' && styles.activeTab]}
@@ -204,7 +204,9 @@ const FindAccountScreen = ({ navigation }) => {
                 </TouchableOpacity>
             </View>
 
+            {/* Form */}
             <View style={styles.content}>
+                {/* Email Input */}
                 <View style={styles.inputContainer}>
                     <Text style={styles.label}>이메일</Text>
                     <TextInput
@@ -222,6 +224,7 @@ const FindAccountScreen = ({ navigation }) => {
                     {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
                 </View>
 
+                {/* User ID Input for Password Tab */}
                 {activeTab === 'password' && (
                     <View style={styles.inputContainer}>
                         <Text style={styles.label}>아이디</Text>
@@ -240,12 +243,9 @@ const FindAccountScreen = ({ navigation }) => {
                     </View>
                 )}
 
+                {/* Buttons */}
                 <TouchableOpacity
-                    style={[
-                        styles.checkButton,
-                        isAuthCodeSent && styles.checkedButton,
-                        loading && styles.buttonDisabled
-                    ]}
+                    style={[styles.checkButton, isAuthCodeSent && styles.checkedButton, loading && styles.buttonDisabled]}
                     onPress={handleSendAuthCode}
                     disabled={loading || isAuthCodeVerified}
                 >
@@ -258,6 +258,7 @@ const FindAccountScreen = ({ navigation }) => {
                     )}
                 </TouchableOpacity>
 
+                {/* Verification Code Input */}
                 {isAuthCodeSent && (
                     <View style={styles.inputContainer}>
                         <View style={styles.labelContainer}>
@@ -283,6 +284,7 @@ const FindAccountScreen = ({ navigation }) => {
                     </View>
                 )}
 
+                {/* Verify Code Button */}
                 {isAuthCodeSent && !isAuthCodeVerified && (
                     <TouchableOpacity
                         style={[styles.verifyButton, loading && styles.buttonDisabled]}
@@ -297,6 +299,7 @@ const FindAccountScreen = ({ navigation }) => {
                     </TouchableOpacity>
                 )}
 
+                {/* Reset Password Button */}
                 {activeTab === 'password' && isAuthCodeVerified && (
                     <TouchableOpacity
                         style={[styles.resetButton, loading && styles.buttonDisabled]}

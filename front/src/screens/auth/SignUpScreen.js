@@ -14,17 +14,7 @@ import {
     Animated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
-
-const BASE_URL = '  http://000.000.000.000:3000';
-
-const api = axios.create({
-    baseURL: BASE_URL,
-    timeout: 10000,
-    headers: {
-        'Content-Type': 'application/json'
-    }
-});
+import api from '../../api/api';
 
 const SignUpScreen = ({ navigation }) => {
     const [formData, setFormData] = useState({
@@ -127,7 +117,7 @@ const SignUpScreen = ({ navigation }) => {
 
     const checkUsername = async () => {
         if (!formData.username) {
-            setErrors(prev => ({...prev, username: '아이디를 입력해주세요'}));
+            setErrors(prev => ({ ...prev, username: '아이디를 입력해주세요' }));
             return;
         }
 
@@ -141,7 +131,7 @@ const SignUpScreen = ({ navigation }) => {
                 setIsUsernameValid(true);
                 Alert.alert('사용 가능', '사용 가능한 아이디입니다');
             } else {
-                setErrors(prev => ({...prev, username: '이미 사용 중인 아이디입니다'}));
+                setErrors(prev => ({ ...prev, username: '이미 사용 중인 아이디입니다' }));
             }
         } catch (error) {
             console.error('아이디 중복 확인 오류:', error);
@@ -153,7 +143,7 @@ const SignUpScreen = ({ navigation }) => {
 
     const requestVerificationCode = async () => {
         if (!formData.email) {
-            setErrors(prev => ({...prev, email: '이메일을 입력해주세요'}));
+            setErrors(prev => ({ ...prev, email: '이메일을 입력해주세요' }));
             return;
         }
 
@@ -176,22 +166,30 @@ const SignUpScreen = ({ navigation }) => {
 
     const verifyCode = async () => {
         if (!formData.verificationCode) {
-            setErrors(prev => ({...prev, verificationCode: '인증코드를 입력해주세요'}));
+            setErrors(prev => ({ ...prev, verificationCode: '인증코드를 입력해주세요' }));
             return;
         }
 
         try {
-            if (formData.verificationCode === receivedCode) {
+            setLoading(true);
+            // 서버에 인증 코드 확인 요청
+            const response = await api.post('/api/auth/verify-code', {
+                email: formData.email,  // 이메일
+                authCode: formData.verificationCode, // 입력한 인증 코드
+            });
+
+            if (response.data.success) {
                 setIsEmailVerified(true);
                 Alert.alert('인증 완료', '이메일 인증이 완료되었습니다.');
-                setErrors(prev => ({...prev, verificationCode: ''}));
-            } else {
-                setErrors(prev => ({...prev, verificationCode: '인증코드가 일치하지 않습니다'}));
             }
         } catch (error) {
-            Alert.alert('오류', '인증코드 확인 중 문제가 발생했습니다.');
+            setErrors(prev => ({ ...prev, verificationCode: '인증코드가 일치하지 않거나 만료되었습니다' }));
+            Alert.alert('오류', '인증코드 확인에 실패했습니다. 다시 시도해주세요.');
+        } finally {
+            setLoading(false);
         }
     };
+
 
     const handleSignup = async () => {
         if (!validateForm()) return;
@@ -219,7 +217,7 @@ const SignUpScreen = ({ navigation }) => {
                 Alert.alert('가입 완료', '회원가입이 완료되었습니다.', [
                     {
                         text: '확인',
-                        onPress: () => navigation.navigate('Login', {username: formData.username})
+                        onPress: () => navigation.navigate('Login', { username: formData.username })
                     }
                 ]);
             }
@@ -506,5 +504,6 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
     },
 });
+
 
 export default SignUpScreen;

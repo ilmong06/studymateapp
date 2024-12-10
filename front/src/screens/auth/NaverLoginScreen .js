@@ -1,51 +1,63 @@
-import React, { useState } from 'react';
-import { View } from "react-native";
+import React from 'react';
+import { View, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
-
-const runFirst = `window.ReactNativeWebView.postMessage("this is message from web");`;
+import api from '../../api/api';
+import * as SecureStore from 'expo-secure-store';
 
 const NaverLoginScreen = ({ navigation }) => {
-    const [webViewKey, setWebViewKey] = useState(0); // 웹뷰 키를 상태로 관리
-
-    function LogInProgress(data) {
-        const exp = "code=";
-        var condition = data.indexOf(exp);
-        if (condition !== -1) {
-            var request_code = data.substring(condition + exp.length);
-            sendCodeToBackend(request_code); // 인증 코드를 백엔드로 전송
+    // 웹뷰에서 전달받은 URL에서 인증 코드 추출
+    const handleLoginProgress = async (data) => {
+        const codeParam = "code=";
+        const startIndex = data.indexOf(codeParam);
+        if (startIndex !== -1) {
+            const authCode = data.substring(startIndex + codeParam.length);
+            console.log('Extracted Authorization Code:', authCode);
+            await sendCodeToBackend(authCode); // 인증 코드를 백엔드로 전송
         }
-    }
+    };
 
-    const sendCodeToBackend = (code) => {
-        console.log('Authorization code being sent to backend:', code);
-        fetch('http://000.000.000.000:3000/auth/naver-login?code=' + code)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok ' + response.statusText);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Response from backend:', data); // 백엔드 응답 출력
-        })
-        .catch(error => {
-            console.error('Error connecting to backend:', error); // 오류 처리
-        });
+    // 백엔드로 인증 코드 전송
+    const sendCodeToBackend = async (code) => {
+        try {
+            console.log('Authorization code being sent to backend:', code);
+
+            // API 요청
+            const response = await api.get(`/auth/naver-login`, {
+                params: { code },
+            });
+
+            console.log('Response from backend:', response.data);
+
+            // 로그인 성공 시 토큰 저장
+            const { token } = response.data;
+
+            await SecureStore.setItemAsync('userToken', token);
+
+            // 홈 화면으로 이동
+            navigation.reset({
+                index: 0,
+                routes: [{ name: 'HomeTabs' }],
+            });
+        } catch (error) {
+            console.error('Error connecting to backend:', error.response?.data || error.message);
+            Alert.alert('로그인 실패', '백엔드와 연결하는 중 오류가 발생했습니다.');
+        }
     };
 
     return (
         <View style={{ flex: 1 }}>
             <WebView
-                key={webViewKey} // 새로고침할 때마다 key를 바꿔서 새로 로드
                 originWhitelist={['*']}
                 scalesPageToFit={false}
                 style={{ marginTop: 30 }}
                 source={{
-                    uri: 'https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id={}&redirect_uri={}'
+                    uri: 'https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=ROb3HJTEYSeYsldT26BA&redirect_uri=https://auth.expo.io/@wovlf02/frontend',
                 }}
-                injectedJavaScript={runFirst}
+                injectedJavaScript={`window.ReactNativeWebView.postMessage("this is message from web");`}
                 javaScriptEnabled={true}
-                onMessage={(event) => { LogInProgress(event.nativeEvent["url"]); }} // 인증 코드 처리
+                onMessage={(event) => {
+                    handleLoginProgress(event.nativeEvent.url); // 인증 코드 처리
+                }}
             />
         </View>
     );

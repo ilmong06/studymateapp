@@ -4,13 +4,13 @@ const mysql = require('mysql2');
 
 
 const app = express();
-const port = 3006;
+const port = 3306;
 
 // MySQL database connection
 const connection = mysql.createConnection({
     host: 'localhost',
     user: 'root',  // 실제 MySQL 사용자 이름으로 변경
-    password: '',  // 실제 MySQL 비밀번호로 변경
+    password: 'elskvhfh12',  // 실제 MySQL 비밀번호로 변경
     database: 'studymate', // 데이터베이스 이름
 });
 
@@ -57,8 +57,8 @@ app.get('/auth/naver-login', async (req, res) => {
 
         // MySQL query to insert user data
         const query = `
-            INSERT INTO users (username, email, password_hash, name, profile_image, role)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO users (username, password_hash, name, email, phone_number, birth_date, social_id, social_provicer)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE 
                 username = VALUES(username),
                 email = VALUES(email),

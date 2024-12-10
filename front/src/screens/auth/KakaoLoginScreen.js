@@ -1,69 +1,47 @@
 import React from 'react';
-import { View } from "react-native";
+import { View, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
-import axios from 'axios';
-const runFirst = `window.ReactNativeWebView.postMessage("this is message from web");`;
+import api from '../../api/api';
+import * as SecureStore from "expo-secure-store";
 
 const KakaoLoginScreen = ({ navigation }) => {
-
-    function LogInProgress(data) {
-        const exp = "code=";
-        var condition = data.indexOf(exp);
-        if (condition !== -1) {
-            var request_code = data.substring(condition + exp.length);
-            sendCodeToBackend(request_code); // 인증 코드를 백엔드로 전송
+    // 웹뷰에서 전달받은 URL에서 인증 코드 추출
+    const handleLoginProgress = async (data) => {
+        const codeParam = "code=";
+        const startIndex = data.indexOf(codeParam);
+        if (startIndex !== -1) {
+            const authCode = data.substring(startIndex + codeParam.length);
+            console.log('Extracted Authorization Code:', authCode);
+            await sendCodeToBackend(authCode); // 인증 코드를 백엔드로 전송
         }
-    }
-  
-    
-    const sendCodeToBackend = (code) => {
-        console.log('Authorization code being sent to backend:', code);
-        fetch('http://000.000.000.000:3000/auth/kakao-login?code=' + code)
-        .then(response => {
-            // 응답 상태 코드가 200번대인지 확인
-            if (!response.ok) {
-                throw new Error('Network response was not ok ' + response.statusText);
-            }
-            return response.json(); // JSON 파싱
-        })
-        .then(data => {
-            console.log('Response from backend:', data); // 백엔드 응답 출력
-            navigation.navigate('HomeScreen');///////////////////////////이부분 추가추가ㅜㅇ나ㅜㄹㄴ이린ㅇ리안ㄹㅁ나;ㄹ망러
-        })
-        .catch(error => {
-            console.error('Error connecting to backend:', error); // 오류 처리
-        });
-    
     };
 
-    const requestToken = async (request_code) => {
-        var request_token_url = "https://kauth.kakao.com/oauth/token";
+    // 백엔드로 인증 코드 전송
+    const sendCodeToBackend = async (code) => {
+        try {
+            console.log('Authorization code being sent to backend:', code);
 
-        axios({
-            method: "post",
-            url: request_token_url,
-            params: {
-                grant_type: 'authorization_code',
-                client_id: '', // 자신의 REST_API_KEY
-                redirect_uri: '',
-                code: request_code,
-            },
-        }).then(function (response) {
-            axios({
-                method: 'get',
-                url: 'https://kapi.kakao.com/v2/user/me',
-                headers: {
-                    Authorization: `Bearer ${response.data.access_token}`
-                }
-            }).then(function (response) {
-                console.log('response :: ' + JSON.stringify(response));
-            }).catch(function (error) {
-                console.log('error', error);
+            // API 요청
+            const response = await api.get(`/api/auth/kakao-login`, {
+                params: { code },
             });
 
-        }).catch(function (error) {
-            console.log('error', error);
-        });
+            console.log('Response from backend:', response.data);
+
+            // 로그인 성공 시 토큰 저장
+            const { token } = response.data;
+
+            await SecureStore.setItemAsync('userToken', token);
+
+            // 홈 화면으로 이동
+            navigation.reset({
+                index: 0,
+                routes: [{ name: 'HomeTabs' }],
+            });
+        } catch (error) {
+            console.error('Error connecting to backend:', error.response?.data || error.message);
+            Alert.alert('로그인 실패', '백엔드와 연결하는 중 오류가 발생했습니다.');
+        }
     };
 
     return (
@@ -73,11 +51,13 @@ const KakaoLoginScreen = ({ navigation }) => {
                 scalesPageToFit={false}
                 style={{ marginTop: 30 }}
                 source={{
-                    uri: 'https://kauth.kakao.com/oauth/authorize?response_type=code&client_id={}&redirect_uri={}'
+                    uri: 'https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=a39da3f1c5f70e11c3034c5aa7116868&redirect_uri=https://auth.expo.io/@wovlf02/frontend',
                 }}
-                injectedJavaScript={runFirst}
+                injectedJavaScript={`window.ReactNativeWebView.postMessage("this is message from web");`}
                 javaScriptEnabled={true}
-                onMessage={(event) => { LogInProgress(event.nativeEvent["url"]); }} // 인증 코드 처리
+                onMessage={(event) => {
+                    handleLoginProgress(event.nativeEvent.url); // 인증 코드 처리
+                }}
             />
         </View>
     );
