@@ -27,27 +27,27 @@ const getGoals = async (req, res) => {
 // 학습 목표 추가
 const addGoal = async (req, res) => {
   const userId = req.user.id;
-  const { goal_name, goal_type } = req.body;
+  const { goal_name, goal_type, study_date } = req.body;
 
-  if (!goal_name || !goal_type) {
-    return res.status(400).json({ success: false, message: '목표 이름과 유형이 필요합니다.' });
+  if (!goal_name || !goal_type || !study_date) {
+    return res.status(400).json({ success: false, message: '목표 정보를 모두 입력해주세요.' });
   }
 
   try {
     const [result] = await pool.query(
-      'INSERT INTO learning_goals (user_id, goal_name, goal_type) VALUES (?, ?, ?)',
-      [userId, goal_name, goal_type]
+      'INSERT INTO learning_goals (user_id, goal_name, goal_type, created_at) VALUES (?, ?, ?, ?)',
+      [userId, goal_name, goal_type, study_date]
     );
+
     res.status(201).json({
       id: result.insertId,
       user_id: userId,
       goal_name,
       goal_type,
-      is_completed: 0,
-      created_at: new Date(),
+      study_date,
     });
   } catch (error) {
-    console.error('학습 목표 추가 중 오류', error);
+    console.error("목표 추가 실패", error);
     res.status(500).json({ success: false, message: '목표를 추가하는 중 문제가 발생했습니다.' });
   }
 };

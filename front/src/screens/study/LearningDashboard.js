@@ -3,22 +3,23 @@ import {
   View,
   Text,
   TextInput,
-  FlatList,
   TouchableOpacity,
   StyleSheet,
   Alert,
   ActivityIndicator,
 } from "react-native";
 import * as SecureStore from "expo-secure-store";
-import api from "../../api/api";
+import { Calendar } from "react-native-calendars";
 import { Checkbox } from "react-native-paper";
+import api from "../../api/api";
 
 const LearningDashboard = () => {
   const [goals, setGoals] = useState([]);
   const [newGoal, setNewGoal] = useState("");
-  const [goalType, setGoalType] = useState("daily");
+  const [selectedDate, setSelectedDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState("");
+  const [checkedGoals, setCheckedGoals] = useState({}); // 체크 상태를 저장
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,36 +55,27 @@ const LearningDashboard = () => {
     fetchData();
   }, []);
 
-  const toggleGoalCompletion = async (goalId, isCompleted) => {
-    try {
-      const token = await SecureStore.getItemAsync("userToken");
-      await api.put(
-        `/api/study/goals/${goalId}`,
-        { is_completed: !isCompleted },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      setGoals(
-        goals.map((goal) =>
-          goal.id === goalId ? { ...goal, is_completed: !isCompleted } : goal
-        )
-      );
-    } catch (error) {
-      Alert.alert("오류", "목표 상태 변경 중 문제가 발생했습니다.");
-    }
+  const handleDayPress = async (day) => {
+    setSelectedDate(day.dateString);
   };
 
   const addGoal = async () => {
-    if (!newGoal.trim()) return Alert.alert("유효성 검사 오류", "목표를 입력해주세요.");
+    if (!newGoal.trim()) {
+      return Alert.alert("유효성 검사 오류", "목표를 입력해주세요.");
+    }
+
+    if (!selectedDate) {
+      return Alert.alert("날짜 선택 오류", "목표를 입력할 날짜를 선택해주세요.");
+    }
+
     try {
       const token = await SecureStore.getItemAsync("userToken");
       const response = await api.post(
         "/api/study/goals",
         {
           goal_name: newGoal,
-          goal_type: goalType,
+          goal_type: "daily",
+          study_date: selectedDate,
         },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -92,9 +84,17 @@ const LearningDashboard = () => {
 
       setGoals([...goals, response.data]);
       setNewGoal("");
+      Alert.alert("성공", "목표를 추가했습니다.");
     } catch (error) {
       Alert.alert("오류", "새 목표를 추가하는데 실패했습니다.");
     }
+  };
+
+  const toggleCheckbox = (id) => {
+    setCheckedGoals((prevState) => ({
+      ...prevState,
+      [id]: !prevState[id],
+    }));
   };
 
   if (loading) {
@@ -108,35 +108,44 @@ const LearningDashboard = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>안녕하세요, {username}님!</Text>
-      <View style={styles.section}>
-        <TextInput
-          style={styles.input}
-          placeholder="새 목표 입력"
-          value={newGoal}
-          onChangeText={(text) => setNewGoal(text)}
-        />
-        <TouchableOpacity onPress={addGoal} style={styles.button}>
-          <Text style={styles.buttonText}>추가</Text>
-        </TouchableOpacity>
-        <FlatList
-          data={goals}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.goalItem}>
-              <Checkbox
-                status={item.is_completed ? "checked" : "unchecked"}
-                onPress={() => toggleGoalCompletion(item.id, item.is_completed)}
-                color={"#007BFF"}
-              />
-              <Text
-                style={item.is_completed ? styles.completedGoal : styles.incompleteGoal}
-              >
-                {item.goal_name} ({item.goal_type})
-              </Text>
-            </View>
-          )}
-        />
-      </View>
+      <Calendar
+        onDayPress={handleDayPress}
+        markedDates={{
+          [selectedDate]: { selected: true, selectedColor: "#007BFF" },
+        }}
+        style={styles.calendar}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="새 목표 입력"
+        value={newGoal}
+        onChangeText={(text) => setNewGoal(text)}
+      />
+      <TouchableOpacity onPress={addGoal} style={styles.button}>
+        <Text style={styles.buttonText}>추가</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.subHeader}>목표 목록</Text>
+      {goals.length === 0 ? (
+        <Text style={styles.noGoals}>목표가 없습니다.</Text>
+      ) : (
+        goals.map((goal) => (
+          <View key={goal.id} style={styles.goalItem}>
+            <Checkbox
+              status={checkedGoals[goal.id] ? "checked" : "unchecked"}
+              onPress={() => toggleCheckbox(goal.id)}
+            />
+            <Text
+              style={[
+                styles.goalText,
+                checkedGoals[goal.id] && styles.strikethrough, // 체크 상태에서 적용
+              ]}
+            >
+              {goal.goal_name}
+            </Text>
+          </View>
+        ))
+      )}
     </View>
   );
 };
@@ -148,13 +157,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9f9f9",
   },
   header: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 15,
+    marginBottom: 10,
     color: "#333",
   },
-  section: {
-    marginTop: 10,
+  calendar: {
+    marginBottom: 20,
   },
   input: {
     borderWidth: 1,
@@ -162,37 +171,39 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 5,
     marginBottom: 10,
-    fontSize: 16,
-    color: "#000",
-    backgroundColor: "#fff",
   },
   button: {
     backgroundColor: "#007BFF",
     padding: 10,
     borderRadius: 5,
     alignItems: "center",
-    marginBottom: 15,
   },
   buttonText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+  subHeader: {
     fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 5,
+    color: "#333",
+  },
+  noGoals: {
+    fontSize: 14,
+    color: "#555",
   },
   goalItem: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 10,
   },
-  completedGoal: {
-    textDecorationLine: "line-through",
-    color: "green",
-    fontSize: 16,
-    marginLeft: 5,
+  goalText: {
+    fontSize: 14,
+    marginLeft: 10,
   },
-  incompleteGoal: {
-    color: "#333",
-    fontSize: 16,
-    marginLeft: 5,
+  strikethrough: {
+    textDecorationLine: "line-through", // 취소선 스타일
+    color: "#555",
   },
 });
 
