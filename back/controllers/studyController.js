@@ -3,10 +3,10 @@ const verifyToken = require('../middlewares/authMiddleware');
 require('dotenv').config();
 
 const pool = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    host: 'localhost',
+    user: 'root',  // 실제 MySQL 사용자 이름으로 변경
+    password: '',  // 실제 MySQL 비밀번호로 변경
+    database: 'studymate', // 데이터베이스 이름
 });
 
 module.exports = pool;
@@ -17,7 +17,7 @@ const getGoals = async (req, res) => {
     const userId = req.user.id; // JWT에서 추출된 사용자 ID
     console.log('JWT user.ID:', req.user.id);
     try {
-        const [goals] = await db.query(
+        const [goals] = await pool.query(
             'SELECT * FROM learning_goals WHERE user_id = ? ORDER BY created_at DESC',
             [userId]
         );
@@ -38,7 +38,7 @@ const addGoal = async (req, res) => {
     }
 
     try {
-        const [result] = await db.query(
+        const [result] = await pool.query(
             'INSERT INTO learning_goals (user_id, goal_name, goal_type) VALUES (?, ?, ?)',
             [userId, goal_name, goal_type]
         );
@@ -63,7 +63,7 @@ const toggleGoalCompletion = async (req, res) => {
     const { is_completed } = req.body;
 
     try {
-        await db.query(
+        await pool.query(
             'UPDATE learning_goals SET is_completed = ? WHERE id = ? AND user_id = ?',
             [is_completed, goalId, userId]
         );
@@ -79,7 +79,7 @@ const getTimeLogs = async (req, res) => {
     const userId = req.user.id;
 
     try {
-        const [timeLogs] = await db.query(
+        const [timeLogs] = await pool.query(
             'SELECT * FROM learning_time_logs WHERE user_id = ? ORDER BY study_date DESC',
             [userId]
         );
@@ -100,7 +100,7 @@ const logStudyTime = async (req, res) => {
     }
 
     try {
-        await db.query(
+        await pool.query(
             `INSERT INTO learning_time_logs (user_id, study_date, study_time_minutes)
              VALUES (?, ?, ?)
              ON DUPLICATE KEY UPDATE study_time_minutes = ?`,
