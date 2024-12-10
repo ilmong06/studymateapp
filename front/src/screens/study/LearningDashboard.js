@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  ScrollView, // ScrollView 추가
 } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { Calendar } from "react-native-calendars";
@@ -123,50 +124,53 @@ const LearningDashboard = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>안녕하세요, {username}님!</Text>
-      <Calendar
-        onDayPress={handleDayPress}
-        markedDates={{
-          [selectedDate]: { selected: true, selectedColor: '#007BFF' },
-        }}
-        style={{ height: 350, width: '100%' }} // 캘린더 높이와 너비를 명시적으로 지정
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="새 목표 입력"
-        value={newGoal}
-        onChangeText={(text) => setNewGoal(text)}
-      />
-      <TouchableOpacity onPress={addGoal} style={styles.button}>
-        <Text style={styles.buttonText}>추가</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.subHeader}>목표 목록</Text>
-      {goals.length === 0 ? (
-        <Text style={styles.noGoals}>목표가 없습니다.</Text>
-      ) : (
-        goals.map((goal) => (
-          <View key={goal.id} style={styles.goalItem}>
-            <Checkbox
-              status={goal.is_completed ? "checked" : "unchecked"}
-              onPress={() => toggleCheckbox(goal.id, goal.is_completed)}
-            />
-            <Text style={goal.is_completed ? styles.strikethrough : null}>
-              {goal.goal_name}
-            </Text>
-          </View>
-        ))
-      )}
-    </View>
+    <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <View style={styles.container}>
+        <Text style={styles.header}>안녕하세요, {username}님!</Text>
+        <Calendar
+          onDayPress={handleDayPress}
+          markedDates={{
+            [selectedDate]: { selected: true, selectedColor: '#007BFF' },
+          }}
+          style={{ height: 350, width: '100%' }}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="새 목표 입력"
+          value={newGoal}
+          onChangeText={(text) => setNewGoal(text)}
+        />
+        <TouchableOpacity onPress={addGoal} style={styles.button}>
+          <Text style={styles.buttonText}>추가</Text>
+        </TouchableOpacity>
+        <Text style={styles.subHeader}>목표 목록</Text>
+        {goals.length === 0 ? (
+          <Text style={styles.noGoals}>목표가 없습니다.</Text>
+        ) : (
+          goals.map((goal) => (
+            <View key={goal.id} style={styles.goalItem}>
+              <Checkbox
+                status={goal.is_completed ? "checked" : "unchecked"}
+                onPress={() => toggleCheckbox(goal.id, goal.is_completed)}
+              />
+              <Text style={goal.is_completed ? styles.strikethrough : null}>
+                {goal.goal_name}
+              </Text>
+            </View>
+          ))
+        )}
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
+  scrollContainer: {
+    flexGrow: 1, // 스크롤 영역 전체를 꽉 채우도록 설정
     backgroundColor: "#f9f9f9",
+  },
+  container: {
+    padding: 20,
   },
   header: {
     fontSize: 18,
@@ -185,6 +189,12 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 5,
     alignItems: "center",
+    marginBottom: 10,
+  },
+  subHeader: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 5,
   },
   goalItem: {
     flexDirection: "row",
@@ -193,6 +203,10 @@ const styles = StyleSheet.create({
   },
   strikethrough: {
     textDecorationLine: "line-through",
+  },
+  noGoals: {
+    fontStyle: "italic",
+    color: "gray",
   },
 });
 
