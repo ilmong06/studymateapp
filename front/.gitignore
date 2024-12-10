@@ -34,3 +34,6 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+src/screens/auth/KakaoLoginScreen.js
+src/screens/auth/NaverLoginScreen.js

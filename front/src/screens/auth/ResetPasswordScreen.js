@@ -1,5 +1,3 @@
-// ResetPasswordScreen.js
-
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -15,22 +13,10 @@ import {
     Animated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { authAPI } from "../../services/api";
-import axios from 'axios';
-
-const BASE_URL = '  http://000.000.000.000:30000';
-
-// axios 인스턴스 생성
-const api = axios.create({
-    baseURL: BASE_URL,
-    timeout: 10000,
-    headers: {
-        'Content-Type': 'application/json'
-    }
-});
+import api from '../../api/api';
 
 const ResetPasswordScreen = ({ route, navigation }) => {
-    const { email, userId, sessionId } = route.params;
+    const { email, userId } = route.params;
     const [formData, setFormData] = useState({
         password: '',
         confirmPassword: ''
@@ -86,8 +72,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
             const response = await api.post('/api/auth/reset-password', {
                 email: email.trim(),
                 userId: userId.trim(),
-                newPassword: formData.password,
-                sessionId: sessionId
+                newPassword: formData.password
             });
 
             if (response.data.success) {
