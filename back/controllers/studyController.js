@@ -34,9 +34,12 @@ const addGoal = async (req, res) => {
   }
 
   try {
+    const formattedStudyDate = new Date(study_date).toISOString().split('T')[0]; // 올바른 날짜 포맷 변환
+    console.log('Formatted date before DB insert:', formattedStudyDate);
+
     const [result] = await pool.query(
-      'INSERT INTO learning_goals (user_id, goal_name, goal_type, created_at) VALUES (?, ?, ?, ?)',
-      [userId, goal_name, goal_type, study_date]
+      'INSERT INTO learning_goals (user_id, goal_name, goal_type, study_date) VALUES (?, ?, ?, ?)',
+      [userId, goal_name, goal_type, formattedStudyDate]
     );
 
     res.status(201).json({
@@ -44,13 +47,14 @@ const addGoal = async (req, res) => {
       user_id: userId,
       goal_name,
       goal_type,
-      study_date,
+      study_date: formattedStudyDate,
     });
   } catch (error) {
-    console.error("목표 추가 실패", error);
+    console.error('목표 추가 실패', error);
     res.status(500).json({ success: false, message: '목표를 추가하는 중 문제가 발생했습니다.' });
   }
 };
+
 
 // 목표 완료 상태 변경
 const toggleGoalCompletion = async (req, res) => {
