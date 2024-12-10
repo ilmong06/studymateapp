@@ -4,10 +4,11 @@ const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const bodyParser = require("body-parser");
 const chatRoutes = require('./routes/chatRoutes');
+const studyRoutes = require('./routes/studyRoutes.js')
 
 const app = express();
 const corsOptions = {
-    origin: 'http://10.20.62.11:19006'
+    origin: 'http://192.168.219.108:19006'
 }
 app.use(cors());
 app.use(express.json());
@@ -15,6 +16,7 @@ app.use(bodyParser.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/study', studyRoutes);
 
 app.use(cors(corsOptions));
 
