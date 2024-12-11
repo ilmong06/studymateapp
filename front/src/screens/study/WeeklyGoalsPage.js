@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, FlatList } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { Checkbox } from "react-native-paper";
 import * as SecureStore from "expo-secure-store";
@@ -14,12 +14,18 @@ const WeeklyGoalsPage = () => {
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState("");
 
-  // 목표 그룹화 함수
-  const groupGoalsByGoalId = (goals) => {
+  // 날짜 포맷 함수
+  const formatDate = (date) => {
+    const [year, month, day] = date.split("-");
+    return `${month}월 ${day}일 ${year}년`;
+  };
+
+  // 목표 그룹화 함수 (기간 기준으로 그룹화)
+  const groupGoalsByPeriod = (goals) => {
     const grouped = goals.reduce((acc, goal) => {
-      const { goal_id } = goal;
-      if (!acc[goal_id]) acc[goal_id] = [];
-      acc[goal_id].push(goal);
+      const periodKey = `${goal.start_date} ~ ${goal.end_date}`;
+      if (!acc[periodKey]) acc[periodKey] = [];
+      acc[periodKey].push(goal);
       return acc;
     }, {});
     setGroupedGoals(grouped);
@@ -51,7 +57,7 @@ const WeeklyGoalsPage = () => {
         });
 
         setGoals(goalsResponse.data);
-        groupGoalsByGoalId(goalsResponse.data);
+        groupGoalsByPeriod(goalsResponse.data);
       } catch (error) {
         console.error("데이터 가져오기 오류:", error);
       } finally {
@@ -95,8 +101,7 @@ const WeeklyGoalsPage = () => {
 
       // 동일 기간의 목표가 있는지 확인
       const existingGoalGroup = goals.find(
-        (goal) =>
-          goal.start_date === startDate && goal.end_date === endDate
+        (goal) => goal.start_date === startDate && goal.end_date === endDate
       );
 
       const goalId = existingGoalGroup ? existingGoalGroup.goal_id : Date.now();
@@ -117,7 +122,7 @@ const WeeklyGoalsPage = () => {
 
       const newGoals = [...goals, response.data];
       setGoals(newGoals);
-      groupGoalsByGoalId(newGoals);
+      groupGoalsByPeriod(newGoals);
       setNewGoal("");
       Alert.alert("성공", "목표를 추가했습니다.");
     } catch (error) {
@@ -140,7 +145,7 @@ const WeeklyGoalsPage = () => {
         goal.id === goalId ? { ...goal, is_completed: updatedStatus } : goal
       );
       setGoals(updatedGoals);
-      groupGoalsByGoalId(updatedGoals);
+      groupGoalsByPeriod(updatedGoals);
     } catch (error) {
       Alert.alert("오류", "목표 완료 상태를 변경하는데 실패했습니다.");
     }
@@ -156,7 +161,7 @@ const WeeklyGoalsPage = () => {
   }
 
   return (
-    <View>
+    <ScrollView style={{ padding: 10 }}>
       <Text>안녕하세요, {username}님!</Text>
 
       <Calendar
@@ -167,7 +172,7 @@ const WeeklyGoalsPage = () => {
         }}
       />
 
-      <Text>선택한 날짜: {startDate} ~ {endDate}</Text>
+      <Text>선택한 날짜: {formatDate(startDate)} ~ {formatDate(endDate)}</Text>
 
       <TextInput
         style={{ borderWidth: 1, borderColor: "#007BFF", padding: 10, marginBottom: 10 }}
@@ -181,13 +186,21 @@ const WeeklyGoalsPage = () => {
       </TouchableOpacity>
 
       <Text>목표 목록:</Text>
-      {Object.entries(groupedGoals).map(([goalId, goals]) => (
-        <View key={goalId} style={{ marginVertical: 10 }}>
-          <Text style={{ fontWeight: "bold" }}>Goal ID: {goalId}</Text>
+      {Object.entries(groupedGoals).map(([period, goals]) => (
+        <View key={period} style={{ marginVertical: 10 }}>
+          <Text style={{ fontWeight: "bold", marginBottom: 5 }}>{`기간: ${period}`}</Text>
           {goals.map((goal) => (
-            <View key={goal.id} style={{ flexDirection: "row", alignItems: "center", padding: 10, borderBottomWidth: 1 }}>
+            <View
+              key={goal.id}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                padding: 10,
+                borderBottomWidth: 1,
+                borderColor: "#ccc",
+              }}
+            >
               <Text style={{ flex: 1 }}>{goal.goal_name}</Text>
-              <Text style={{ flex: 1 }}>{`기간: ${goal.start_date} ~ ${goal.end_date}`}</Text>
               <Checkbox
                 status={goal.is_completed ? "checked" : "unchecked"}
                 onPress={() => handleGoalCompletionToggle(goal.id, goal.is_completed)}
@@ -196,7 +209,7 @@ const WeeklyGoalsPage = () => {
           ))}
         </View>
       ))}
-    </View>
+    </ScrollView>
   );
 };
 
