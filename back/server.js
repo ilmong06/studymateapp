@@ -7,6 +7,7 @@ const chatRoutes = require('./routes/chatRoutes');
 const studyRoutes = require('./routes/studyRoutes.js')
 const subjectRoutes = require('./routes/subjectRoutes'); // 추가
 const timerRoutes = require('./routes/timerRoutes'); // 추가
+const study2Routes = require('./routes/study2Routes');  // study2Routes로 변경
 
 const app = express();
 const corsOptions = {
@@ -21,7 +22,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/study', studyRoutes);
 app.use('/api/subjects', subjectRoutes); // 추가
 app.use('/api/timers', timerRoutes); // 추가
-
+app.use('/api/study2', study2Routes);  // study2Routes 연결
 
 app.use(cors(corsOptions));
 
