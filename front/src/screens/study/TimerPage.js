@@ -9,6 +9,7 @@ const TimerPage = ({ route, navigation }) => {
     const [timerId, setTimerId] = useState(null);
     const [startTime, setStartTime] = useState(null);  // 타이머 시작 시간
     const [elapsedTime, setElapsedTime] = useState(0);  // 경과 시간 (초)
+    const [pausedTime, setPausedTime] = useState(0);  // 타이머가 멈춘 시간 (초)
 
     useEffect(() => {
         // 타이머 상태 확인
@@ -43,7 +44,7 @@ const TimerPage = ({ route, navigation }) => {
         if (isTimerRunning && startTime) {
             interval = setInterval(() => {
                 const currentTime = new Date();
-                const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);  // 경과 시간 (초) 계산
+                const elapsedSeconds = Math.floor((currentTime - startTime) / 1000) + pausedTime;  // 경과 시간 계산
                 setElapsedTime(elapsedSeconds);
             }, 1000);
         }
@@ -51,7 +52,7 @@ const TimerPage = ({ route, navigation }) => {
         return () => {
             clearInterval(interval);  // 타이머 종료 시 interval 클리어
         };
-    }, [isTimerRunning, startTime]);
+    }, [isTimerRunning, startTime, pausedTime]);
 
     const startTimer = async () => {
         try {
@@ -64,6 +65,7 @@ const TimerPage = ({ route, navigation }) => {
                     setIsTimerRunning(true);
                     setTimerId(response.data.timerId);  // 서버에서 반환된 타이머 ID 저장
                     setStartTime(new Date());  // 타이머 시작 시간을 현재 시간으로 설정
+                    setPausedTime(elapsedTime);  // 이전 경과 시간을 기록
                 } else {
                     Alert.alert('오류', response.data.message);
                 }
@@ -84,6 +86,7 @@ const TimerPage = ({ route, navigation }) => {
                 if (response.data.success) {
                     setIsTimerRunning(false);
                     setTimerId(null);  // 타이머 ID 초기화
+                    setPausedTime(elapsedTime);  // 타이머 정지 시 경과 시간 저장
                 } else {
                     Alert.alert('오류', response.data.message);
                 }
