@@ -202,22 +202,24 @@ const styles = StyleSheet.create({
         marginBottom: 15,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#ff1493', // 사랑스러운 핑크색
+        backgroundColor: 'transparent', // 배경을 투명하게 설정
+        borderWidth: 2, // 테두리 두께 설정
     },
     buttonText: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: 'white',
+        color: '#ff69b4', //
     },
     startStopButton: {
-        backgroundColor: '#ff1493',
+        borderColor: '#ff1493', // 사랑스러운 핑크색 테두리
     },
     terminateButton: {
-        backgroundColor: '#ff6347', // 빨간색 종료 버튼
+        borderColor: '#ff6347', // 빨간색 종료 버튼 테두리
     },
     backButton: {
-        backgroundColor: '#98fb98', // 연한 초록색
+        borderColor: '#98fb98', // 연한 초록색 테두리
     },
 });
+
 
 export default TimerPage;

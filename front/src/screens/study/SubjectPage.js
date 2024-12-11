@@ -83,6 +83,14 @@ const SubjectPage = ({ navigation }) => {
                 )}
                 keyExtractor={(item, index) => `${item.subject_name}-${index}`} // subject_name과 index를 결합하여 고유하게 생성
             />
+
+            {/* 주간 목표로 이동하는 버튼 */}
+            <TouchableOpacity
+                style={styles.weeklyGoalsButton}
+                onPress={() => navigation.navigate('WeeklyGoalsPage')} // 주간 목표 페이지로 이동
+            >
+                <Text style={styles.weeklyGoalsButtonText}>📅 주간 목표</Text>
+            </TouchableOpacity>
         </View>
     );
 };
@@ -137,7 +145,18 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#ff66b2', // 핑크색 텍스트
     },
+    weeklyGoalsButton: {
+        backgroundColor: '#ff66b2', // 핑크색
+        paddingVertical: 15,
+        borderRadius: 25, // 둥근 버튼
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    weeklyGoalsButtonText: {
+        color: '#ffffff',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
 });
-
 
 export default SubjectPage;

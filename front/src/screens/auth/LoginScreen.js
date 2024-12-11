@@ -55,7 +55,7 @@ const LoginScreen = ({ navigation }) => {
 
                 navigation.reset({
                     index: 0,
-                    routes: [{ name: 'SubjectPage' }], // Stack.Navigator에 등록된 이름과 일치시킵니다.
+                    routes: [{ name: 'LearningDashboard' }], // Stack.Navigator에 등록된 이름과 일치시킵니다.
                 });
             } else {
                 Alert.alert('로그인 실패', response.data.message);

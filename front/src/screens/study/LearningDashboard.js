@@ -14,7 +14,7 @@ import { Calendar } from "react-native-calendars";
 import { Checkbox } from "react-native-paper";
 import api from "../../api/api";
 
-const LearningDashboard = () => {
+const LearningDashboard = ({ navigation }) => {
   const [goals, setGoals] = useState([]);
   const [newGoal, setNewGoal] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
@@ -159,6 +159,13 @@ const LearningDashboard = () => {
             </View>
           ))
         )}
+        {/* 주간 목표로 이동하는 버튼 */}
+        <TouchableOpacity
+          style={styles.weeklyGoalsButton}
+          onPress={() => navigation.navigate("WeeklyGoalsPage")} // 주간 목표 페이지로 이동
+        >
+          <Text style={styles.weeklyGoalsButtonText}>📅 주간 목표</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -207,6 +214,18 @@ const styles = StyleSheet.create({
   noGoals: {
     fontStyle: "italic",
     color: "gray",
+  },
+  weeklyGoalsButton: {
+    backgroundColor: "#007BFF", // 핑크색
+    paddingVertical: 15,
+    borderRadius: 25, // 둥근 버튼
+    alignItems: "center",
+    marginTop: 20,
+  },
+  weeklyGoalsButtonText: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });
 
