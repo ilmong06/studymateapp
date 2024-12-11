@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, Alert, StyleSheet } from 'react-native';
+import { View, Text, Button, Alert, StyleSheet, TouchableOpacity } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import api from '../../api/api';
 import { CircularProgress } from 'react-native-circular-progress';
@@ -127,7 +127,7 @@ const TimerPage = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.subjectName}>과목 이름: {subjectName}</Text>
+            <Text style={styles.subjectName}> {subjectName}</Text>
             <View style={styles.timerContainer}>
                 <CircularProgress
                     size={200}
@@ -142,20 +142,26 @@ const TimerPage = ({ route, navigation }) => {
                 </CircularProgress>
             </View>
             <View style={styles.buttonContainer}>
-                <Button
-                    title={isTimerRunning ? '타이머 정지' : '타이머 시작'}
+                <TouchableOpacity
+                    style={[styles.button, styles.startStopButton]}
                     onPress={isTimerRunning ? stopTimer : startTimer}
-                />
+                >
+                    <Text style={styles.buttonText}>{isTimerRunning ? '타이머 정지' : '타이머 시작'}</Text>
+                </TouchableOpacity>
                 {isTimerRunning && (
-                    <Button
-                        title="타이머 종료"
+                    <TouchableOpacity
+                        style={[styles.button, styles.terminateButton]}
                         onPress={terminateTimer}
-                    />
+                    >
+                        <Text style={styles.buttonText}>타이머 종료</Text>
+                    </TouchableOpacity>
                 )}
-                <Button
-                    title="뒤로 가기"
+                <TouchableOpacity
+                    style={[styles.button, styles.backButton]}
                     onPress={() => navigation.goBack()}
-                />
+                >
+                    <Text style={styles.buttonText}>뒤로 가기</Text>
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -169,8 +175,11 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     subjectName: {
-        fontSize: 20,
+        fontSize: 30,  // 글씨 크기를 더 크게 설정
+        fontWeight: 'bold',  // 굵은 글씨로 강조
+        color: '#0077b6',  // 강조할 색상 (파란색)
         marginBottom: 20,
+        textTransform: 'uppercase',  // 모든 글씨를 대문자로 변환
     },
     timerContainer: {
         alignItems: 'center',
@@ -185,6 +194,26 @@ const styles = StyleSheet.create({
         width: '100%',
         paddingHorizontal: 20,
         marginTop: 20,
+    },
+    button: {
+        paddingVertical: 15,
+        borderRadius: 10,
+        marginBottom: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    buttonText: {
+        fontSize: 18,
+        color: 'white',
+    },
+    startStopButton: {
+        backgroundColor: '#00bfff',
+    },
+    terminateButton: {
+        backgroundColor: '#ff6347',
+    },
+    backButton: {
+        backgroundColor: '#4caf50',
     },
 });
 
