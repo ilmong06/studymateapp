@@ -11,7 +11,7 @@ const userInfoUrl = "https://openapi.naver.com/v1/nid/me";
 
 // CORS 설정 추가
 const corsOptions = {
-    origin: 'http://10.20.62.11:19006', // 프론트엔드 주소
+    origin: 'http://172.30.89.34:19006', // 프론트엔드 주소
     methods: 'GET,POST',
 };
 
