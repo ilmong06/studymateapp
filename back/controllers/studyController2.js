@@ -30,14 +30,32 @@ const addGoal = async (req, res) => {
     }
 
     try {
+        // 동일 기간 목표가 있는지 확인
+        const [existingGoals] = await promisePool.query(
+            'SELECT goal_id FROM weekly_goals WHERE user_id = ? AND start_date = ? AND end_date = ?',
+            [req.user.id, start_date, end_date]
+        );
+
+        let goal_id;
+
+        if (existingGoals.length > 0) {
+            // 기존 goal_id 사용
+            goal_id = existingGoals[0].goal_id;
+        } else {
+            // 새로운 goal_id 생성 (자연수로 증가)
+            const [maxGoalId] = await promisePool.query('SELECT MAX(goal_id) AS max_id FROM weekly_goals');
+            goal_id = (maxGoalId[0].max_id || 0) + 1;
+        }
+
         const [result] = await promisePool.query(
-            'INSERT INTO weekly_goals (user_id, goal_name, start_date, end_date, is_completed) VALUES (?, ?, ?, ?, ?)',
-            [req.user.id, goal_name, start_date, end_date, 0]
+            'INSERT INTO weekly_goals (user_id, goal_id, goal_name, start_date, end_date, is_completed) VALUES (?, ?, ?, ?, ?, ?)',
+            [req.user.id, goal_id, goal_name, start_date, end_date, 0]
         );
 
         const newGoal = {
             id: result.insertId,
             user_id: req.user.id,
+            goal_id,
             goal_name,
             start_date,
             end_date,
