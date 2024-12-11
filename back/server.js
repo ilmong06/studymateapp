@@ -7,7 +7,7 @@ const chatRoutes = require('./routes/chatRoutes');
 
 const app = express();
 const corsOptions = {
-    origin: 'http://172.20.10.2:19006'
+    origin: 'http://172.30.1.26:19006'
 }
 app.use(cors());
 app.use(express.json());
