@@ -97,6 +97,28 @@ const TimerPage = ({ route, navigation }) => {
         }
     };
 
+    const terminateTimer = async () => {
+        try {
+            const token = await SecureStore.getItemAsync('userToken');
+            if (token && timerId) {
+                const response = await api.post('/api/timers/stop', { id: timerId }, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (response.data.success) {
+                    setIsTimerRunning(false);
+                    setTimerId(null);  // 타이머 ID 초기화
+                    setPausedTime(0);  // 타이머 종료 시 초기화
+                    setElapsedTime(0);  // 타이머 종료 시 경과 시간 초기화
+                } else {
+                    Alert.alert('오류', response.data.message);
+                }
+            }
+        } catch (error) {
+            console.error('타이머 종료 오류:', error);
+            Alert.alert('오류', '타이머를 종료하는 데 문제가 발생했습니다.');
+        }
+    };
+
     return (
         <View>
             <Text>과목 ID: {subjectId}</Text>
@@ -106,6 +128,12 @@ const TimerPage = ({ route, navigation }) => {
                 title={isTimerRunning ? '타이머 정지' : '타이머 시작'}
                 onPress={isTimerRunning ? stopTimer : startTimer}
             />
+            {isTimerRunning && (
+                <Button
+                    title="타이머 종료"
+                    onPress={terminateTimer} // 종료 버튼 추가
+                />
+            )}
             <Button title="뒤로 가기" onPress={() => navigation.goBack()} />
         </View>
     );
