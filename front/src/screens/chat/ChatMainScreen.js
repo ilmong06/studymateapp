@@ -1,70 +1,90 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import {
+    View,
+    Text,
+    TouchableOpacity,
+    FlatList,
+    ActivityIndicator,
+    StyleSheet,
+    Alert,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../../api/api'; // API 설정 파일
-import { useNavigation } from '@react-navigation/native';
 import * as SecureStore from 'expo-secure-store';
+import api from '../../api/api';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { io } from 'socket.io-client';
+import refreshToken from "../../tokenRefresh/refreshToken";
 
 const ChatMainScreen = () => {
     const [chatRooms, setChatRooms] = useState([]);
     const [loading, setLoading] = useState(false);
     const navigation = useNavigation();
-
-    // 토큰 갱신 함수
-    const refreshToken = async () => {
-        try {
-            const refreshToken = await SecureStore.getItemAsync('refreshToken');
-            const response = await api.post('/api/auth/refresh', { refreshToken: refreshToken });
-
-            // 새로 받은 access_token을 저장
-            await SecureStore.setItemAsync('accessToken', response.data.accessToken); // 직렬화하여 저장
-            await SecureStore.setItemAsync('refreshToken', response.data.refreshToken); // 직렬화하여 저장
-            return response.data.accessToken; // 갱신된 access_token 반환
-        } catch (error) {
-            console.error("토큰 갱신 실패:", error);
-            throw new Error("토큰 갱신에 실패했습니다.");
-        }
-    };
+    const [socket, setSocket] = useState(null);
 
     // 채팅방 목록을 가져오는 함수
     const fetchChatRooms = async () => {
         setLoading(true);
         try {
-            let refresh_token = await SecureStore.getItemAsync('refresh_token');
-            refresh_token = JSON.parse(refresh_token); // 역직렬화하여 사용
-
-            if (!refresh_token) {
-                // 만약 accessToken이 없다면 갱신 시도
-                refresh_token = await refreshToken();
+            let accessToken = JSON.parse(await SecureStore.getItemAsync('userToken'));
+            if (!accessToken) {
+                accessToken = await refreshToken(); // 갱신 함수 호출
+                if (!accessToken) return; // 갱신 실패 시 중단
             }
 
             const response = await api.get('/api/chat/chat-rooms', {
-                headers: {
-                    Authorization: `Bearer ${refresh_token}`,
-                },
+                headers: { Authorization: `Bearer ${accessToken}` },
             });
 
             if (response.data.success) {
                 setChatRooms(response.data.chatRooms);
             } else {
-                Alert.alert('알림', '채팅방을 가져오는 데 실패했습니다.');
+                Alert.alert('알림', '채팅방을 가져오지 못했습니다.');
             }
         } catch (error) {
             console.error('채팅방 가져오기 오류:', error);
-            Alert.alert('알림', '채팅방을 가져오는 데 실패했습니다.');
+            Alert.alert('알림', '채팅방을 가져오는 중 문제가 발생했습니다.');
         } finally {
             setLoading(false);
         }
     };
 
+    // 새로운 채팅방이 생성되었을 때 목록 업데이트
+    const handleNewChatRoom = (newChatRoom) => {
+        setChatRooms((prevChatRooms) => [newChatRoom, ...prevChatRooms]);
+    };
+
+    useEffect(() => {
+        const setupSocket = async () => {
+            let token = await SecureStore.getItemAsync('userToken');
+            if (!token) {
+                token = await refreshToken(); // 토큰 갱신 시도
+            }
+            const socketInstance = io('http://121.127.165.43:3000', {
+                auth: { token },
+            });
+            setSocket(socketInstance);
+
+            socketInstance.on('newChatRoom', handleNewChatRoom);
+
+            return () => {
+                socketInstance.disconnect();
+            };
+        };
+
+        setupSocket();
+    }, []);
+
+    // 화면에 포커스될 때마다 채팅방 목록 갱신
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchChatRooms();
+        }, [])
+    );
+
     // 채팅방을 선택했을 때
     const handleChatRoomPress = (chatRoomId) => {
         navigation.navigate('ChatRoom', { chatRoomId });
     };
-
-    useEffect(() => {
-        fetchChatRooms();
-    }, []);
 
     return (
         <View style={styles.container}>
@@ -79,7 +99,7 @@ const ChatMainScreen = () => {
             </View>
 
             {loading ? (
-                <ActivityIndicator size="large" color="#0000ff" />
+                <ActivityIndicator size="large" color="#0066FF" />
             ) : (
                 <FlatList
                     data={chatRooms}
@@ -90,10 +110,11 @@ const ChatMainScreen = () => {
                             onPress={() => handleChatRoomPress(item.id)}
                         >
                             <Text style={styles.chatRoomName}>{item.name || '1:1 채팅'}</Text>
-                            <Text style={styles.createdAt}>{new Date(item.created_at).toLocaleDateString()}</Text>
+                            <Text style={styles.createdAt}>
+                                {new Date(item.created_at).toLocaleString('ko-KR')}
+                            </Text>
                         </TouchableOpacity>
                     )}
-                    contentContainerStyle={styles.chatRoomList}
                 />
             )}
         </View>
@@ -120,9 +141,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#0066FF',
         padding: 10,
         borderRadius: 50,
-    },
-    chatRoomList: {
-        flexGrow: 1,
     },
     chatRoom: {
         backgroundColor: '#f5f5f5',

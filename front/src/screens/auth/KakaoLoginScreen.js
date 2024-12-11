@@ -31,7 +31,7 @@ const KakaoLoginScreen = ({ navigation }) => {
             // 로그인 성공 시 토큰 저장
             const { token } = response.data;
 
-            await SecureStore.setItemAsync('userToken', token);
+            await SecureStore.setItemAsync('userToken', JSON.stringify(token));
 
             // 홈 화면으로 이동
             navigation.reset({
@@ -51,7 +51,7 @@ const KakaoLoginScreen = ({ navigation }) => {
                 scalesPageToFit={false}
                 style={{ marginTop: 30 }}
                 source={{
-                    uri: 'https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=7deb0a4d6a2ad7d958be4c61c3dd6a8e&redirect_uri=https://auth.expo.io/@wovlf02/frontend',
+                    uri: 'https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=dec0fe3fa7148e069e0f372f0ce6f847&redirect_uri=https://auth.expo.io/@wovlf02/frontend',
                 }}
                 injectedJavaScript={`window.ReactNativeWebView.postMessage("this is message from web");`}
                 javaScriptEnabled={true}

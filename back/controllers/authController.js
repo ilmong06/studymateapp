@@ -5,7 +5,6 @@ const axios = require('axios');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 const crypto = require('crypto');
-const {NOW} = require("sequelize");
 const tokenUrl = "https://nid.naver.com/oauth2.0/token";
 const userInfoUrl = "https://openapi.naver.com/v1/nid/me";
 
@@ -20,7 +19,7 @@ const generateAccessToken = (user) => {
     return jwt.sign(
         { id: user.id, username: user.username },
         process.env.JWT_SECRET,
-        { expiresIn: '1d' } // Access Token 만료 시간
+        { expiresIn: '7d' } // Access Token 만료 시간
     );
 };
 // Refresh Token 생성
@@ -28,7 +27,7 @@ const generateRefreshToken = async (user) => {
     const refreshToken = jwt.sign(
         { id: user.id, username: user.username },
         process.env.JWT_REFRESH_SECRET,
-        { expiresIn: '7d' } // 7일 유효
+        { expiresIn: '14d' } // 7일 유효
     );
     // Refresh Token 해싱
     const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
@@ -84,7 +83,7 @@ const login = async (req, res) => {
 
 // 네이버 소셜 로그인
 const naverLogin = async (req, res) => {
-    const { code } = req.body; // 프론트엔드에서 전달된 Authorization Code
+    const { code } = req.query; // 프론트엔드에서 전달된 code
 
     if (!code) {
         return res.status(400).json({ success: false, message: 'Authorization Code가 제공되지 않았습니다.' });
@@ -92,17 +91,20 @@ const naverLogin = async (req, res) => {
 
     try {
         // 네이버 토큰 요청
-        const tokenResponse = await axios.post('https://nid.naver.com/oauth2.0/token', null, {
-            params: {
-                grant_type: 'authorization_code',
-                client_id: process.env.NAVER_CLIENT_ID,
-                client_secret: process.env.NAVER_CLIENT_SECRET,
-                code,
-                redirect_uri: process.env.NAVER_REDIRECT_URI,
-            },
-        });
-
-        const { access_token: accessToken } = tokenResponse.data;
+        const tokenResponse = await axios.post(
+            'https://nid.naver.com/oauth2.0/token',
+            null,
+            {
+                params: {
+                    grant_type: 'authorization_code',
+                    client_id: process.env.NAVER_CLIENT_ID,
+                    client_secret: process.env.NAVER_CLIENT_SECRET,
+                    redirect_uri: encodeURIComponent(process.env.NAVER_REDIRECT_URI),
+                    code,
+                },
+            }
+        );
+        const { access_token: accessToken, refresh_token: refreshToken } = tokenResponse.data;
 
         // 네이버 사용자 프로필 요청
         const profileResponse = await axios.get('https://openapi.naver.com/v1/nid/me', {
@@ -111,20 +113,22 @@ const naverLogin = async (req, res) => {
 
         const profile = profileResponse.data.response;
 
+        // 프로필 데이터 검증
+        if (!profile || !profile.id) {
+            return res.status(500).json({ success: false, message: '네이버 프로필 데이터가 불완전합니다.' });
+        }
+
         const {
             id,
-            username,
-            phoneNumber,
-            name,
+            email,
             nickname,
-            profileImageUrl,
-            birthDate,
+            profile_image: profileImage,
         } = profile;
 
         // 사용자 조회
         const userRows = await db.executeQuery(
             'SELECT * FROM users WHERE social_provider = ? AND social_id = ?',
-            ['naver', id]
+            ['naver', String(id)]
         );
 
         let userId;
@@ -132,52 +136,44 @@ const naverLogin = async (req, res) => {
         if (userRows.length === 0) {
             // 새 사용자 생성
             const [result] = await db.executeQuery(
-                `INSERT INTO users (username, password_hash, name, email, phone_number, birth_date, social_id, social_provider) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                [
-                    username,
-                    null,
-                    name,
-                    null,
-                    phoneNumber,
-                    birthDate,
-                    username,
-                    'naver',
-                ]
+                'INSERT INTO users (username, email, social_id, social_provider, refresh_token) VALUES (?, ?, ?, ?, ?)',
+                [nickname || `naver_${id}`, email || null, id, 'naver', refreshToken]
             );
             userId = result.insertId;
         } else {
-            userId = userRows[0].id;
+            // 기존 사용자 ID 가져오기 및 refreshToken 업데이트
+            const existingUser = userRows[0];
+            userId = existingUser.id;
+            await db.executeQuery(
+                'UPDATE users SET refresh_token = ? WHERE id = ?',
+                [refreshToken, userId]
+            );
         }
 
-        // 소셜 계정 데이터 처리
-        const socialAccountQuery = `
-            INSERT INTO social_accounts (user_id, provider, provider_id, profile_image_url)
-            VALUES (?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                                 profile_image_url = VALUES(profile_image_url),
-                                 updated_at = CURRENT_TIMESTAMP;
-        `;
-        await db.executeQuery(socialAccountQuery, [
-            userId,          // user_id
-            'naver',         // provider
-            id,              // provider_id
-            profileImageUrl,   // profile_image_url
-        ]);
-
         // JWT 토큰 생성
-        const token = generateAccessToken({ id: userId, username: nickname, email });
+        const token = jwt.sign(
+            { id: userId, username: nickname || name, email },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' } // 1시간 유효
+        );
 
         res.status(200).json({
             success: true,
             token,
+            user: {
+                id: userId,
+                username: nickname || name,
+                email,
+            },
         });
+
         console.log('네이버 소셜 로그인 성공');
     } catch (error) {
         console.error('네이버 로그인 오류:', error.response?.data || error.message);
         res.status(500).json({ success: false, message: '네이버 로그인 중 오류가 발생했습니다.' });
     }
 };
+
 
 // 카카오 소셜 로그인
 const kakaoLogin = async (req, res) => {
@@ -198,7 +194,7 @@ const kakaoLogin = async (req, res) => {
             },
         });
 
-        const { access_token: accessToken } = tokenResponse.data;
+        const { access_token: accessToken, refresh_token: refreshToken } = tokenResponse.data;
 
         // 카카오 프로필 요청
         const profileResponse = await axios.get('https://kapi.kakao.com/v2/user/me', {
@@ -207,10 +203,15 @@ const kakaoLogin = async (req, res) => {
 
         const profile = profileResponse.data;
 
+        // Check if required fields exist
+        if (!profile.id || !profile.kakao_account) {
+            return res.status(500).json({ success: false, message: '카카오 프로필 데이터가 불완전합니다.' });
+        }
+
         const { id, kakao_account } = profile;
-        const email = kakao_account?.email || null;
-        const nickname = kakao_account?.profile?.nickname || `kakao_${id}`;
-        const profileImage = kakao_account?.profile?.profile_image_url || null;
+        const email = kakao_account.email || null;
+        const nickname = kakao_account.profile?.nickname || `kakao_${id}`;
+        const profileImage = kakao_account.profile?.profile_image_url || null;
 
         // 사용자 조회
         const userRows = await db.executeQuery(
@@ -223,31 +224,26 @@ const kakaoLogin = async (req, res) => {
         if (userRows.length === 0) {
             // 새 사용자 생성
             const [result] = await db.executeQuery(
-                'INSERT INTO users (username, password_hash, name, email, phone_number, birth_date, social_id, social_provider) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [nickname, null, nickname, email, null, null, id, 'kakao']
+                'INSERT INTO users (username, email, social_id, social_provider, refresh_token) VALUES (?, ?, ?, ?, ?)',
+                [nickname, email, id, 'kakao', refreshToken]
             );
             userId = result.insertId;
         } else {
-            userId = userRows[0].id;
+            // 기존 사용자 ID 가져오기 및 refreshToken 업데이트
+            const existingUser = userRows[0];
+            userId = existingUser.id;
+            await db.executeQuery(
+                'UPDATE users SET refresh_token = ? WHERE id = ?',
+                [refreshToken, userId]
+            );
         }
 
-        // 소셜 계정 데이터 처리
-        const socialAccountQuery = `
-            INSERT INTO social_accounts (user_id, provider, provider_id, profile_image_url)
-            VALUES (?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                                 profile_image_url = VALUES(profile_image_url),
-                                 updated_at = CURRENT_TIMESTAMP;
-        `;
-        await db.executeQuery(socialAccountQuery, [
-            userId,          // user_id
-            'kakao',         // provider
-            id,              // provider_id
-            profileImage,    // profile_image_url
-        ]);
-
         // JWT 토큰 생성
-        const token = generateAccessToken({ id: userId, username: nickname, email });
+        const token = jwt.sign(
+            { id: userId, username: nickname, email },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' } // 1시간 유효
+        );
 
         res.status(200).json({
             success: true,
@@ -265,8 +261,6 @@ const kakaoLogin = async (req, res) => {
         res.status(500).json({ success: false, message: '카카오 로그인 중 오류가 발생했습니다.' });
     }
 };
-
-
 
 const resetPassword = async (req, res) => {
     const { email, userId, newPassword } = req.body;
@@ -361,9 +355,12 @@ const verifyAuthCode = async (req, res) => {
     const { email, authCode } = req.body;
 
     try {
-        // 인증 코드 확인
+        // 인증 코드 확인 및 username 조회
         const [verification] = await db.executeQuery(
-            `SELECT code FROM verification_codes WHERE email = ? AND code = ? AND expires_at > NOW()`,
+            `SELECT vc.code, u.username
+             FROM verification_codes vc
+                      JOIN users u ON u.email = vc.email
+             WHERE vc.email = ? AND vc.code = ? AND vc.expires_at > NOW()`,
             [email, authCode]
         );
 
@@ -371,12 +368,19 @@ const verifyAuthCode = async (req, res) => {
             return res.status(400).json({ success: false, message: '유효하지 않은 인증 코드입니다.' });
         }
 
-        res.status(200).json({ success: true, message: '인증 코드가 확인되었습니다.' });
+        const username = verification[0].username;
+
+        res.status(200).json({
+            success: true,
+            message: '인증 코드가 확인되었습니다.',
+            username: username, // 응답에 username 포함
+        });
     } catch (error) {
         console.error('인증 코드 확인 오류:', error);
         res.status(500).json({ success: false, message: '인증 코드 확인에 실패했습니다.' });
     }
 };
+
 
 // 회원가입 처리
 const register = async (req, res) => {
@@ -436,6 +440,9 @@ const refreshToken = async (req, res) => {
         console.log('조회된 사용자:', user);
 
         // Refresh Token 값 검증
+        console.log('Database Stored Refresh Token:', user.refresh_token);
+        console.log('Incoming Refresh Token:', refreshToken);
+
         const isTokenValid = await bcrypt.compare(refreshToken, user.refresh_token);
         console.log('Refresh Token 검증 결과:', isTokenValid);
 
@@ -461,7 +468,38 @@ const refreshToken = async (req, res) => {
     }
 };
 
+// 아이디 검색 및 인증 코드 확인 엔드포인트
+const searchId = async (req, res) => {
+    const { email, authCode } = req.body;
 
+    try {
+        // 이메일과 인증 코드 확인
+        const [verification] = await db.executeQuery(
+            `SELECT code FROM verification_codes WHERE email = ? AND code = ? AND expires_at > NOW()`,
+            [email, authCode]
+        );
+
+        if (verification.length === 0) {
+            return res.status(400).json({ success: false, message: '유효하지 않은 인증 코드입니다.' });
+        }
+
+        // 이메일로 아이디(username) 검색
+        const user = await db.executeQuery(
+            `SELECT username FROM users WHERE email = ?`,
+            [email]
+        );
+
+        if (user.length === 0) {
+            return res.status(404).json({ success: false, message: '해당 이메일로 등록된 계정이 없습니다.' });
+        }
+
+        const { username } = user;
+        res.status(200).json({ success: true, username, message: '인증 코드가 확인되었으며, 아이디를 찾았습니다.' });
+    } catch (error) {
+        console.error('아이디 검색 및 인증 코드 확인 오류:', error);
+        res.status(500).json({ success: false, message: '아이디 검색 및 인증 코드 확인에 실패했습니다.' });
+    }
+};
 
 const getUserInfo = async (req, res) => {
     try {
@@ -508,5 +546,6 @@ module.exports = {
     register,
     refreshToken,
     getUserInfo,
-    corsOptions
+    corsOptions,
+    searchId
 };

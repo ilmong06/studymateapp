@@ -110,7 +110,7 @@ const FindAccountScreen = ({ navigation }) => {
 
     const handleVerifyCode = async () => {
         if (!formData.authCode) {
-            setErrors(prev => ({ ...prev, authCode: '인증코드를 입력해주세요.' }));
+            setErrors((prev) => ({ ...prev, authCode: '인증코드를 입력해주세요.' }));
             return;
         }
 
@@ -119,40 +119,37 @@ const FindAccountScreen = ({ navigation }) => {
             const response = await api.post('/api/auth/verify-code', {
                 email: formData.email.trim(),
                 authCode: formData.authCode.trim(),
-                type: activeTab
             });
 
             if (response.data.success) {
                 setIsAuthCodeVerified(true);
-                if (activeTab === 'id' && response.data.userId) {
-                    Alert.alert(
-                        '아이디 찾기 결과',
-                        `회원님의 아이디는 ${response.data.userId} 입니다.`,
-                        [{
+
+                // Display the username in an alert
+                Alert.alert(
+                    '아이디 찾기 결과',
+                    `회원님의 아이디는 ${response.data.username} 입니다.`,
+                    [
+                        {
                             text: '확인',
-                            onPress: () => navigation.navigate('Login', { userId: response.data.userId })
-                        }]
-                    );
-                } else if (activeTab === 'password') {
-                    Alert.alert(
-                        '인증 완료',
-                        '인증이 완료되었습니다. 비밀번호를 재설정하세요.',
-                        [{
-                            text: '확인',
-                            onPress: handleResetPassword
-                        }]
-                    );
-                }
+                            onPress: () => navigation.navigate('Login', { username: response.data.username }),
+                        },
+                    ]
+                );
+            } else {
+                Alert.alert('오류', response.data.message || '인증코드가 유효하지 않습니다.');
             }
         } catch (error) {
-            const errorMessage = error.response?.status === 400 ?
-                '인증코드가 일치하지 않습니다.' :
-                '인증 처리 중 오류가 발생했습니다.';
+            console.error('아이디 찾기 오류:', error);
+            const errorMessage =
+                error.response?.status === 400
+                    ? '인증코드가 일치하지 않습니다.'
+                    : '아이디 찾기 요청 중 오류가 발생했습니다.';
             Alert.alert('오류', errorMessage);
         } finally {
             setLoading(false);
         }
     };
+
 
     const handleResetPassword = () => {
         if (!isAuthCodeVerified) {

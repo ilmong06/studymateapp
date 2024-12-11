@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useEffect, useState} from 'react';
 import {
     View,
     Text,
@@ -19,7 +19,6 @@ import api from '../../api/api';
 // 소셜 로그인 이미지 import
 import NaverLogo from '../../../assets/naver.jpg';
 import KakaoLogo from '../../../assets/kakao.png';
-
 
 const LoginScreen = ({ navigation }) => {
     const [formData, setFormData] = useState({ username: '', password: '' });
@@ -50,12 +49,12 @@ const LoginScreen = ({ navigation }) => {
                 const { accessToken, refreshToken } = response.data;
 
                 // 토큰 저장
-                await SecureStore.setItemAsync('accessToken', JSON.stringify(accessToken)); // 직렬화하여 저장
-                await SecureStore.setItemAsync('refreshToken', JSON.stringify(refreshToken)); // 직렬화하여 저장
+                await SecureStore.setItemAsync('accessToken', JSON.stringify(accessToken));
+                await SecureStore.setItemAsync('refreshToken', JSON.stringify(refreshToken));
 
                 navigation.reset({
                     index: 0,
-                    routes: [{ name: 'HomeTabs' }], // Stack.Navigator에 등록된 이름과 일치시킵니다.
+                    routes: [{ name: 'HomeTabs' }],
                 });
             } else {
                 Alert.alert('로그인 실패', response.data.message);
@@ -67,7 +66,6 @@ const LoginScreen = ({ navigation }) => {
             setLoading(false);
         }
     };
-
 
     // useEffect(() => {
     //     const checkAutoLogin = async () => {
@@ -108,8 +106,6 @@ const LoginScreen = ({ navigation }) => {
     //
     //     checkAutoLogin();
     // }, []);
-
-
 
     // 소셜 로그인
     const handleNaverLogin = () => {
@@ -186,6 +182,16 @@ const LoginScreen = ({ navigation }) => {
                             <Image source={KakaoLogo} style={styles.socialLogo} />
                         </TouchableOpacity>
                     </View>
+
+                    {/* 회원가입 및 아이디/비밀번호 찾기 */}
+                    <View style={styles.actionLinksContainer}>
+                        <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+                            <Text style={styles.actionLink}>회원가입</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => navigation.navigate('FindAccount')}>
+                            <Text style={styles.actionLink}>아이디/비밀번호 찾기</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -258,6 +264,17 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
         resizeMode: 'contain',
+    },
+    actionLinksContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 20,
+        paddingHorizontal: 10,
+    },
+    actionLink: {
+        fontSize: 16,
+        color: '#1A73E8',
+        fontWeight: 'bold',
     },
 });
 

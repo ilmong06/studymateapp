@@ -5,7 +5,6 @@ const {
     createChatRoom,
     addChatRoomMember,
     sendMessage,
-    addFriend
 } = require('../controllers/chatController');
 const verifyToken = require('../middlewares/authMiddleware');
 
@@ -24,9 +23,9 @@ router.post('/chat-rooms', verifyToken, createChatRoom);
 router.post('/chat-rooms/:chatRoomId/members', verifyToken, addChatRoomMember);
 
 // 메시지 보내기
-router.post('/messages', verifyToken, sendMessage);
-
-// 친구 추가
-router.post('/friends', verifyToken, addFriend);
+router.post('/messages/:chatRoomId', verifyToken, sendMessage);
 
 module.exports = router;
+
+
+

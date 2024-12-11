@@ -12,43 +12,42 @@ const api = axios.create({
 
 // 요청 인터셉터
 api.interceptors.response.use(
-    (response) => response, // 응답이 정상적일 경우 그대로 반환
+    (response) => response,
     async (error) => {
         const originalRequest = error.config;
 
-        // Access Token 만료로 인한 401 응답 처리
+        // Access Token 만료 시 처리
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
 
             try {
                 // Refresh Token 가져오기
-                const refreshToken = await SecureStore.getItemAsync('refreshToken');
-
+                const refreshToken = JSON.parse(await SecureStore.getItemAsync('refreshToken'));
                 if (!refreshToken) {
                     console.error('Refresh Token이 없습니다.');
                     throw new Error('Refresh Token not found');
                 }
 
-                // Refresh Token으로 새로운 Access Token 요청
+                // Refresh Token으로 Access Token 갱신
                 const refreshResponse = await api.post('/api/auth/refresh', { refreshToken });
                 const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data;
 
-                // 새 토큰 저장
+                // 새 토큰 저장 (JSON.stringify로 저장)
                 await SecureStore.setItemAsync('userToken', JSON.stringify(accessToken));
                 await SecureStore.setItemAsync('refreshToken', JSON.stringify(newRefreshToken));
 
                 // 원래 요청에 새로운 Access Token 추가
                 originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
-                return api(originalRequest); // 원래 요청 다시 실행
+                return api(originalRequest); // 원래 요청 재시도
             } catch (refreshError) {
                 console.error('토큰 갱신 실패:', refreshError.response?.data || refreshError.message);
 
-                // 토큰 갱신 실패 시 로그아웃 처리 또는 오류 반환
-                throw refreshError;
+                // 세션 만료 처리
+                Alert.alert('세션 만료', '다시 로그인해주세요.');
+                return Promise.reject(refreshError);
             }
         }
 
-        // 그 외의 오류 처리
         return Promise.reject(error);
     }
 );
