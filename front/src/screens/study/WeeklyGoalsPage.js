@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Scro
 import { Calendar } from "react-native-calendars";
 import { Checkbox } from "react-native-paper";
 import * as SecureStore from "expo-secure-store";
-import api from "../../api/api"; // api로 변경
+import api from "../../api/api";
 
 const WeeklyGoalsPage = () => {
   const [goals, setGoals] = useState([]);
@@ -14,24 +14,29 @@ const WeeklyGoalsPage = () => {
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState("");
 
-  // 날짜 포맷 함수
   const formatDate = (date) => {
+    if (!date) return "";
     const [year, month, day] = date.split("-");
     return `${month}월 ${day}일 ${year}년`;
   };
 
-  // 목표 그룹화 함수 (기간 기준으로 그룹화)
   const groupGoalsByPeriod = (goals) => {
     const grouped = goals.reduce((acc, goal) => {
       const periodKey = `${goal.start_date} ~ ${goal.end_date}`;
-      if (!acc[periodKey]) acc[periodKey] = [];
-      acc[periodKey].push(goal);
+      if (!acc[periodKey]) acc[periodKey] = { goals: [], progress: 0 };
+
+      acc[periodKey].goals.push(goal);
+
+      // 진도율 계산
+      const totalItems = acc[periodKey].goals.length;
+      const completedItems = acc[periodKey].goals.filter((g) => g.is_completed).length;
+      acc[periodKey].progress = totalItems > 0 ? ((completedItems / totalItems) * 100).toFixed(2) : 0;
+
       return acc;
     }, {});
     setGroupedGoals(grouped);
   };
 
-  // 데이터 로드 및 사용자 인증
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -42,7 +47,6 @@ const WeeklyGoalsPage = () => {
           return;
         }
 
-        // 사용자 정보 가져오기
         const userInfoResponse = await api.get("/api/auth/user-info", {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -51,7 +55,6 @@ const WeeklyGoalsPage = () => {
           setUsername(userInfoResponse.data.username);
         }
 
-        // 목표 가져오기
         const goalsResponse = await api.get("/api/study2/goals", {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -68,7 +71,6 @@ const WeeklyGoalsPage = () => {
     fetchData();
   }, []);
 
-  // 날짜 선택 처리
   const handleDateSelect = (date) => {
     if (startDate === date.dateString) {
       setStartDate("");
@@ -85,7 +87,6 @@ const WeeklyGoalsPage = () => {
     }
   };
 
-  // 목표 추가
   const addGoal = async () => {
     if (!newGoal.trim()) {
       return Alert.alert("유효성 검사 오류", "목표를 입력해주세요.");
@@ -99,7 +100,6 @@ const WeeklyGoalsPage = () => {
     try {
       const token = await SecureStore.getItemAsync("userToken");
 
-      // 동일 기간의 목표가 있는지 확인
       const existingGoalGroup = goals.find(
         (goal) => goal.start_date === startDate && goal.end_date === endDate
       );
@@ -130,7 +130,6 @@ const WeeklyGoalsPage = () => {
     }
   };
 
-  // 목표 완료 상태 토글
   const handleGoalCompletionToggle = async (goalId, currentStatus) => {
     try {
       const token = await SecureStore.getItemAsync("userToken");
@@ -151,7 +150,6 @@ const WeeklyGoalsPage = () => {
     }
   };
 
-  // 로딩 상태
   if (loading) {
     return (
       <View>
@@ -186,29 +184,33 @@ const WeeklyGoalsPage = () => {
       </TouchableOpacity>
 
       <Text>목표 목록:</Text>
-      {Object.entries(groupedGoals).map(([period, goals]) => (
-        <View key={period} style={{ marginVertical: 10 }}>
-          <Text style={{ fontWeight: "bold", marginBottom: 5 }}>{`기간: ${period}`}</Text>
-          {goals.map((goal) => (
-            <View
-              key={goal.id}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                padding: 10,
-                borderBottomWidth: 1,
-                borderColor: "#ccc",
-              }}
-            >
-              <Text style={{ flex: 1 }}>{goal.goal_name}</Text>
-              <Checkbox
-                status={goal.is_completed ? "checked" : "unchecked"}
-                onPress={() => handleGoalCompletionToggle(goal.id, goal.is_completed)}
-              />
-            </View>
-          ))}
-        </View>
-      ))}
+      {groupedGoals && Object.keys(groupedGoals).length > 0 ? (
+        Object.entries(groupedGoals).map(([period, { goals, progress }]) => (
+          <View key={period} style={{ marginVertical: 10 }}>
+            <Text style={{ fontWeight: "bold", marginBottom: 5 }}>{`기간: ${period} (진도율: ${progress}%)`}</Text>
+            {goals.map((goal) => (
+              <View
+                key={goal.id}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  padding: 10,
+                  borderBottomWidth: 1,
+                  borderColor: "#ccc",
+                }}
+              >
+                <Text style={{ flex: 1 }}>{goal.goal_name}</Text>
+                <Checkbox
+                  status={goal.is_completed ? "checked" : "unchecked"}
+                  onPress={() => handleGoalCompletionToggle(goal.id, goal.is_completed)}
+                />
+              </View>
+            ))}
+          </View>
+        ))
+      ) : (
+        <Text>목표가 없습니다.</Text>
+      )}
     </ScrollView>
   );
 };

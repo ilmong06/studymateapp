@@ -79,25 +79,38 @@ const updateGoalStatus = async (req, res) => {
     }
 
     try {
+        // 체크 상태 업데이트
         const [result] = await promisePool.query(
-            'UPDATE weekly_goals SET is_completed = ? WHERE id = ? AND user_id = ?',
-            [is_completed, id, req.user.id]
+            'UPDATE checklists SET is_checked = ? WHERE id = ?',
+            [is_completed, id]
         );
 
         if (result.affectedRows === 0) {
-            return res.status(404).json({ success: false, message: '목표를 찾을 수 없습니다.' });
+            return res.status(404).json({ success: false, message: '항목을 찾을 수 없습니다.' });
         }
 
-        const [updatedGoal] = await promisePool.query(
-            'SELECT * FROM weekly_goals WHERE id = ? AND user_id = ?',
-            [id, req.user.id]
+        // 진도율 가져오기
+        const [progressResult] = await promisePool.query(
+            `SELECT
+                (SELECT COUNT(*) FROM checklists WHERE goal_id = (SELECT goal_id FROM checklists WHERE id = ?) AND is_checked = 1) /
+                (SELECT COUNT(*) FROM checklists WHERE goal_id = (SELECT goal_id FROM checklists WHERE id = ?)) * 100 AS progress`,
+            [id, id]
         );
 
-        res.status(200).json(updatedGoal[0]);
+        const progress = progressResult[0].progress || 0;
+
+        // 목표 진도율 업데이트
+        const [updatedGoal] = await promisePool.query(
+            'UPDATE weekly_goals SET progress = ? WHERE id = (SELECT goal_id FROM checklists WHERE id = ?)',
+            [progress, id]
+        );
+
+        res.status(200).json({ success: true, progress });
     } catch (error) {
         console.error('목표 상태 업데이트 오류:', error);
         res.status(500).json({ success: false, message: '목표 상태를 업데이트하는 데 실패했습니다.' });
     }
 };
+
 
 module.exports = { getGoals, addGoal, updateGoalStatus };
