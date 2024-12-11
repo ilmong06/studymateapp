@@ -170,6 +170,45 @@ const SettingsScreen = ({ navigation }) => {
         );
     }, [navigation]);
 
+    const handleWithdraw = useCallback(async () => {
+        Alert.alert(
+            '회원 탈퇴',
+            '정말 탈퇴하시겠습니까?\n탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.',
+            [
+                { text: '취소', style: 'cancel' },
+                {
+                    text: '탈퇴',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setLoading(true);
+                            const token = await AsyncStorage.getItem('jwt');
+                            if (!token) {
+                                throw new Error('인증 토큰이 없습니다.');
+                            }
+
+                            await api.delete('/users/withdraw', {
+                                headers: {
+                                    'Authorization': `Bearer ${token}`
+                                }
+                            });
+
+                            await AsyncStorage.clear();
+                            navigation.reset({
+                                index: 0,
+                                routes: [{ name: 'Login' }]
+                            });
+                        } catch (error) {
+                            Alert.alert('오류', '회원 탈퇴에 실패했습니다.');
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    }, [navigation]);
+
     if (loading && !settings.language) {
         return (
             <View style={styles.loadingContainer}>
@@ -252,6 +291,14 @@ const SettingsScreen = ({ navigation }) => {
                         disabled={loading}
                     >
                         <Text style={styles.logoutText}>로그아웃</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.withdrawButton}
+                        onPress={handleWithdraw}
+                        disabled={loading}
+                    >
+                        <Text style={styles.withdrawText}>회원 탈퇴</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -348,7 +395,20 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#ddd',
     },
+    withdrawButton: {
+        backgroundColor: '#fff',
+        padding: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#FF3B30',
+    },
     logoutText: {
+        color: '#FF3B30',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    withdrawText: {
         color: '#FF3B30',
         fontSize: 16,
         fontWeight: '600',
