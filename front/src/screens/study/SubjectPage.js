@@ -58,15 +58,17 @@ const SubjectPage = ({ navigation }) => {
                 onChangeText={setSubjectName}
             />
             <Button title="과목 추가" onPress={addSubject} />
-            <FlatList
-                data={subjects}
-                renderItem={({ item }) => (
-                    <Text onPress={() => navigation.navigate('TimerPage', { subjectId: item.id })}>
-                        {item.subject_name}
-                    </Text>
-                )}
-                keyExtractor={(item) => item.id.toString()}
-            />
+         <FlatList
+           data={subjects}
+           renderItem={({ item }) => (
+             <Text onPress={() => navigation.navigate('TimerPage', { subjectId: item.id })}>
+               {item.subject_name}
+             </Text>
+           )}
+           keyExtractor={(item) => item.id ? item.id.toString() : `${item.subject_name}-${item.created_at || Date.now()}`}  // id가 없을 경우 subject_name과 created_at을 결합, 없으면 현재 시간 사용
+         />
+
+
         </View>
     );
 };

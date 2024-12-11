@@ -1,32 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, Alert } from 'react-native';
+import { View, Text, Button, Alert, StyleSheet } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import api from '../../api/api'; // API 경로에 맞게 수정하세요.
+import api from '../../api/api';
+import { CircularProgress } from 'react-native-circular-progress';
 
 const TimerPage = ({ route, navigation }) => {
-    const { subjectId } = route.params;  // 네비게이션을 통해 전달된 subjectId
+    const { subjectId } = route.params;
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const [timerId, setTimerId] = useState(null);
-    const [startTime, setStartTime] = useState(null);  // 타이머 시작 시간
-    const [elapsedTime, setElapsedTime] = useState(0);  // 경과 시간 (초)
-    const [pausedTime, setPausedTime] = useState(0);  // 타이머가 멈춘 시간 (초)
+    const [startTime, setStartTime] = useState(null);
+    const [elapsedTime, setElapsedTime] = useState(0);
+    const [pausedTime, setPausedTime] = useState(0);
+    const [subjectName, setSubjectName] = useState('');
 
     useEffect(() => {
-        // 타이머 상태 확인
-        const checkTimerStatus = async () => {
+        const fetchTimerAndSubject = async () => {
             try {
                 const token = await SecureStore.getItemAsync('userToken');
                 if (token) {
-                    const response = await api.get('/api/timers', {
+                    const response = await api.get('/api/subjects', {
                         headers: { Authorization: `Bearer ${token}` },
                     });
 
-                    // 현재 활성화된 타이머 확인
-                    const activeTimer = response.data.timers.find(timer => timer.subject_id === subjectId && timer.is_running);
+                    const subject = response.data.subjects.find(item => item.id === subjectId);
+                    if (subject) {
+                        setSubjectName(subject.subject_name);
+                    }
+
+                    const activeTimer = response.data.subjects.find(
+                        timer => timer.subject_id === subjectId && timer.is_running
+                    );
                     if (activeTimer) {
                         setIsTimerRunning(true);
-                        setTimerId(activeTimer.id);  // 활성화된 타이머 ID 저장
-                        setStartTime(new Date(activeTimer.start_time));  // 타이머 시작 시간 설정
+                        setTimerId(activeTimer.timer_id);
+                        setStartTime(new Date(activeTimer.start_time));
                     }
                 }
             } catch (error) {
@@ -35,22 +42,21 @@ const TimerPage = ({ route, navigation }) => {
             }
         };
 
-        checkTimerStatus();
+        fetchTimerAndSubject();
     }, [subjectId]);
 
     useEffect(() => {
-        // 타이머가 실행 중이라면, 경과 시간 업데이트
         let interval;
         if (isTimerRunning && startTime) {
             interval = setInterval(() => {
                 const currentTime = new Date();
-                const elapsedSeconds = Math.floor((currentTime - startTime) / 1000) + pausedTime;  // 경과 시간 계산
+                const elapsedSeconds = Math.floor((currentTime - startTime) / 1000) + pausedTime;
                 setElapsedTime(elapsedSeconds);
             }, 1000);
         }
 
         return () => {
-            clearInterval(interval);  // 타이머 종료 시 interval 클리어
+            clearInterval(interval);
         };
     }, [isTimerRunning, startTime, pausedTime]);
 
@@ -63,9 +69,9 @@ const TimerPage = ({ route, navigation }) => {
                 });
                 if (response.data.success) {
                     setIsTimerRunning(true);
-                    setTimerId(response.data.timerId);  // 서버에서 반환된 타이머 ID 저장
-                    setStartTime(new Date());  // 타이머 시작 시간을 현재 시간으로 설정
-                    setPausedTime(elapsedTime);  // 이전 경과 시간을 기록
+                    setTimerId(response.data.timerId);
+                    setStartTime(new Date());
+                    setPausedTime(elapsedTime);
                 } else {
                     Alert.alert('오류', response.data.message);
                 }
@@ -85,8 +91,8 @@ const TimerPage = ({ route, navigation }) => {
                 });
                 if (response.data.success) {
                     setIsTimerRunning(false);
-                    setTimerId(null);  // 타이머 ID 초기화
-                    setPausedTime(elapsedTime);  // 타이머 정지 시 경과 시간 저장
+                    setTimerId(null);
+                    setPausedTime(elapsedTime);
                 } else {
                     Alert.alert('오류', response.data.message);
                 }
@@ -106,9 +112,9 @@ const TimerPage = ({ route, navigation }) => {
                 });
                 if (response.data.success) {
                     setIsTimerRunning(false);
-                    setTimerId(null);  // 타이머 ID 초기화
-                    setPausedTime(0);  // 타이머 종료 시 초기화
-                    setElapsedTime(0);  // 타이머 종료 시 경과 시간 초기화
+                    setTimerId(null);
+                    setPausedTime(0);
+                    setElapsedTime(0);
                 } else {
                     Alert.alert('오류', response.data.message);
                 }
@@ -120,23 +126,66 @@ const TimerPage = ({ route, navigation }) => {
     };
 
     return (
-        <View>
-            <Text>과목 ID: {subjectId}</Text>
-            <Text>{isTimerRunning ? '타이머가 실행 중입니다.' : '타이머가 정지되었습니다.'}</Text>
-            <Text>경과 시간: {elapsedTime}초</Text> {/* 경과 시간 표시 */}
-            <Button
-                title={isTimerRunning ? '타이머 정지' : '타이머 시작'}
-                onPress={isTimerRunning ? stopTimer : startTimer}
-            />
-            {isTimerRunning && (
+        <View style={styles.container}>
+            <Text style={styles.subjectName}>과목 이름: {subjectName}</Text>
+            <View style={styles.timerContainer}>
+                <CircularProgress
+                    size={200}
+                    width={15}
+                    fill={(elapsedTime / 3600) * 100} // 경과 시간 비율로 계산
+                    rotation={0}
+                    tintColor="#00bfff"
+                    backgroundColor="#e0e0e0"
+                    lineCap="round"
+                >
+                    {() => <Text style={styles.elapsedTime}>{elapsedTime}초</Text>}
+                </CircularProgress>
+            </View>
+            <View style={styles.buttonContainer}>
                 <Button
-                    title="타이머 종료"
-                    onPress={terminateTimer} // 종료 버튼 추가
+                    title={isTimerRunning ? '타이머 정지' : '타이머 시작'}
+                    onPress={isTimerRunning ? stopTimer : startTimer}
                 />
-            )}
-            <Button title="뒤로 가기" onPress={() => navigation.goBack()} />
+                {isTimerRunning && (
+                    <Button
+                        title="타이머 종료"
+                        onPress={terminateTimer}
+                    />
+                )}
+                <Button
+                    title="뒤로 가기"
+                    onPress={() => navigation.goBack()}
+                />
+            </View>
         </View>
     );
 };
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    subjectName: {
+        fontSize: 20,
+        marginBottom: 20,
+    },
+    timerContainer: {
+        alignItems: 'center',
+        marginBottom: 40,
+    },
+    elapsedTime: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#00bfff',
+    },
+    buttonContainer: {
+        width: '100%',
+        paddingHorizontal: 20,
+        marginTop: 20,
+    },
+});
 
 export default TimerPage;
