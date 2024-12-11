@@ -14,7 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../../api/api';
 
-const PrivacySettingScreen = ({ navigation }) => {
+const PrivacySettingsScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [hasChanges, setHasChanges] = useState(false);
@@ -310,4 +310,4 @@ const styles = StyleSheet.create({
     }
 });
 
-export default PrivacySettingScreen;
+export default PrivacySettingsScreen;

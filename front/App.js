@@ -88,10 +88,11 @@ import NotificationSettingsScreen from "./src/screens/mypage/settings/Notificati
 import NotificationDetailScreen from "./src/screens/mypage/settings/NotificationDetailScreen";
 import DisplayModeScreen from "./src/screens/mypage/settings/DisplayModeScreen";
 import FontSizeScreen from "./src/screens/mypage/settings/FontSizeScreen";
-import PrivacySettingScreen from "./src/screens/mypage/settings/PrivacySettingScreen";
+import PrivacySettingsScreen from "./src/screens/mypage/settings/PrivacySettingsScreen";
 import DataStorageScreen from "./src/screens/mypage/settings/DataStorageScreen";
 import SettingsBackupScreen from "./src/screens/mypage/settings/SettingsBackupScreen";
 import BackupScreen from "./src/screens/mypage/settings/BackupScreen";
+
 import {Platform} from "react-native";
 
 const Stack = createNativeStackNavigator();
@@ -213,7 +214,7 @@ const MyPageNavigator = () => (
         <MyPageStack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
         <MyPageStack.Screen name="DisplayMode" component={DisplayModeScreen} />
         <MyPageStack.Screen name="FontSize" component={FontSizeScreen} />
-        <MyPageStack.Screen name="PrivacySetting" component={PrivacySettingScreen} />
+        <MyPageStack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
         <MyPageStack.Screen name="DataStorage" component={DataStorageScreen} />
         <MyPageStack.Screen name="SettingsBackup" component={SettingsBackupScreen} />
         <MyPageStack.Screen name="Backup" component={BackupScreen} />

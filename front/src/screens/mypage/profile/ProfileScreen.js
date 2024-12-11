@@ -28,15 +28,6 @@ const SettingItem = memo(({ title, rightElement, onPress }) => (
     </TouchableOpacity>
 ));
 
-const ConnectedAccount = memo(({ account, onDisconnect }) => (
-    <View style={styles.accountItem}>
-        <Text style={styles.accountProvider}>{account.provider}</Text>
-        <TouchableOpacity onPress={() => onDisconnect(account.id)}>
-            <Text style={styles.disconnectText}>연동 해제</Text>
-        </TouchableOpacity>
-    </View>
-));
-
 const ProfileScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -44,9 +35,7 @@ const ProfileScreen = ({ navigation }) => {
         name: '',
         email: '',
         profileImage: null,
-        backgroundImage: null,
-        isPublic: true,
-        connectedAccounts: []
+        backgroundImage: null
     });
 
     const fetchUserProfile = useCallback(async () => {
@@ -72,9 +61,7 @@ const ProfileScreen = ({ navigation }) => {
                     name: '',
                     email: '',
                     profileImage: null,
-                    backgroundImage: null,
-                    isPublic: true,
-                    connectedAccounts: []
+                    backgroundImage: null
                 });
             };
         }, [fetchUserProfile])
@@ -128,39 +115,6 @@ const ProfileScreen = ({ navigation }) => {
         navigation.navigate('EditInfo');
     }, [navigation]);
 
-    const toggleProfileVisibility = useCallback(async () => {
-        try {
-            setLoading(true);
-            const response = await api.put('/users/privacy', {
-                isPublic: !userProfile.isPublic
-            });
-            setUserProfile(prev => ({
-                ...prev,
-                isPublic: !prev.isPublic
-            }));
-        } catch (error) {
-            Alert.alert('오류', '프로필 공개 설정 변경에 실패했습니다');
-        } finally {
-            setLoading(false);
-        }
-    }, [userProfile.isPublic]);
-
-    const handleDisconnectAccount = useCallback(async (accountId) => {
-        try {
-            setLoading(true);
-            await api.delete(`/users/connected-accounts/${accountId}`);
-            setUserProfile(prev => ({
-                ...prev,
-                connectedAccounts: prev.connectedAccounts.filter(acc => acc.id !== accountId)
-            }));
-            Alert.alert('성공', '계정 연동이 해제되었습니다');
-        } catch (error) {
-            Alert.alert('오류', '계정 연동 해제에 실패했습니다');
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);
         await fetchUserProfile();
@@ -187,6 +141,16 @@ const ProfileScreen = ({ navigation }) => {
                 />
             }
         >
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>프로필</Text>
+                <TouchableOpacity
+                    style={styles.settingsButton}
+                    onPress={() => navigation.navigate('Settings')}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                    <Ionicons name="settings-outline" size={24} color={theme.colors.text} />
+                </TouchableOpacity>
+            </View>
             <TouchableOpacity
                 style={styles.backgroundImageContainer}
                 onPress={() => handleImageUpload('background')}
@@ -246,30 +210,6 @@ const ProfileScreen = ({ navigation }) => {
                         />
                     }
                 />
-                <SettingItem
-                    title="프로필 공개 설정"
-                    rightElement={
-                        <Switch
-                            value={userProfile.isPublic}
-                            onValueChange={toggleProfileVisibility}
-                            trackColor={{
-                                false: theme.colors.inactive,
-                                true: theme.colors.primary
-                            }}
-                        />
-                    }
-                />
-
-                <View style={styles.connectedAccountsSection}>
-                    <Text style={styles.sectionTitle}>연동된 계정</Text>
-                    {userProfile.connectedAccounts.map((account) => (
-                        <ConnectedAccount
-                            key={account.id}
-                            account={account}
-                            onDisconnect={handleDisconnectAccount}
-                        />
-                    ))}
-                </View>
             </View>
         </ScrollView>
     );
@@ -356,28 +296,22 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: theme.colors.text,
     },
-    connectedAccountsSection: {
-        marginTop: theme.spacing.lg,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        marginBottom: theme.spacing.sm,
-    },
-    accountItem: {
+    header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: theme.spacing.sm,
+        paddingHorizontal: 16,
+        paddingTop: Platform.OS === 'ios' ? 60 : 16,
+        paddingBottom: 16,
+        backgroundColor: '#fff',
     },
-    accountProvider: {
-        fontSize: 16,
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: '600',
         color: theme.colors.text,
     },
-    disconnectText: {
-        fontSize: 14,
-        color: theme.colors.error,
+    settingsButton: {
+        padding: 8,
     }
 });
 
