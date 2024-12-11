@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, Alert, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Alert, StyleSheet, TouchableOpacity } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import api from '../../api/api';
 import { CircularProgress } from 'react-native-circular-progress';
@@ -134,8 +134,8 @@ const TimerPage = ({ route, navigation }) => {
                     width={15}
                     fill={(elapsedTime / 3600) * 100} // 경과 시간 비율로 계산
                     rotation={0}
-                    tintColor="#00bfff"
-                    backgroundColor="#e0e0e0"
+                    tintColor="#ff69b4" // 부드럽고 사랑스러운 핑크색
+                    backgroundColor="#ffe0f0" // 밝은 배경색
                     lineCap="round"
                 >
                     {() => <Text style={styles.elapsedTime}>{elapsedTime}초</Text>}
@@ -146,14 +146,14 @@ const TimerPage = ({ route, navigation }) => {
                     style={[styles.button, styles.startStopButton]}
                     onPress={isTimerRunning ? stopTimer : startTimer}
                 >
-                    <Text style={styles.buttonText}>{isTimerRunning ? '타이머 정지' : '타이머 시작'}</Text>
+                    <Text style={styles.buttonText}>{isTimerRunning ? '정지' : '시작'}</Text>
                 </TouchableOpacity>
                 {isTimerRunning && (
                     <TouchableOpacity
                         style={[styles.button, styles.terminateButton]}
                         onPress={terminateTimer}
                     >
-                        <Text style={styles.buttonText}>타이머 종료</Text>
+                        <Text style={styles.buttonText}>종료</Text>
                     </TouchableOpacity>
                 )}
                 <TouchableOpacity
@@ -173,22 +173,23 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
+        backgroundColor: '#f0f8ff', // 부드러운 하늘색 배경
     },
     subjectName: {
-        fontSize: 30,  // 글씨 크기를 더 크게 설정
-        fontWeight: 'bold',  // 굵은 글씨로 강조
-        color: '#0077b6',  // 강조할 색상 (파란색)
+        fontSize: 36,
+        fontWeight: 'bold',
+        color: '#ff1493', // 사랑스러운 핑크색
         marginBottom: 20,
-        textTransform: 'uppercase',  // 모든 글씨를 대문자로 변환
+        textTransform: 'capitalize',
     },
     timerContainer: {
         alignItems: 'center',
         marginBottom: 40,
     },
     elapsedTime: {
-        fontSize: 24,
+        fontSize: 22,
         fontWeight: 'bold',
-        color: '#00bfff',
+        color: '#ff69b4', // 사랑스러운 핑크색
     },
     buttonContainer: {
         width: '100%',
@@ -196,24 +197,26 @@ const styles = StyleSheet.create({
         marginTop: 20,
     },
     button: {
-        paddingVertical: 15,
-        borderRadius: 10,
-        marginBottom: 10,
+        paddingVertical: 18,
+        borderRadius: 25, // 버튼을 더 동글동글하게
+        marginBottom: 15,
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: '#ff1493', // 사랑스러운 핑크색
     },
     buttonText: {
-        fontSize: 18,
+        fontSize: 20,
+        fontWeight: 'bold',
         color: 'white',
     },
     startStopButton: {
-        backgroundColor: '#00bfff',
+        backgroundColor: '#ff1493',
     },
     terminateButton: {
-        backgroundColor: '#ff6347',
+        backgroundColor: '#ff6347', // 빨간색 종료 버튼
     },
     backButton: {
-        backgroundColor: '#4caf50',
+        backgroundColor: '#98fb98', // 연한 초록색
     },
 });
 
