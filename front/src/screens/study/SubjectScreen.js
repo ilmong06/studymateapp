@@ -1,52 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import {
-    View,
-    TextInput,
-    TouchableOpacity,
-    FlatList,
-    Text,
-    StyleSheet,
-    Alert,
-    ActivityIndicator,
-} from 'react-native';
+import { View, TextInput, Alert, FlatList, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import api from '../../api/api';
-import refreshToken from '../../tokenRefresh/refreshToken'; // JWT 토큰 갱신 함수
 
 const SubjectScreen = ({ navigation }) => {
     const [subjects, setSubjects] = useState([]);
     const [subjectName, setSubjectName] = useState('');
-    const [selectedSubject, setSelectedSubject] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [selectedSubject, setSelectedSubject] = useState(null);  // 클릭한 과목을 저장
 
-    // 과목 목록 불러오기
     const fetchSubjects = async () => {
-        setLoading(true);
         try {
-            let token = await SecureStore.getItemAsync('userToken');
-            if (!token) {
-                token = await refreshToken(); // 토큰 갱신 시도
-                if (!token) {
-                    Alert.alert('오류', '로그인 정보가 필요합니다.');
-                    navigation.navigate('Login'); // 로그인 화면으로 이동
-                    return;
-                }
-            }
-
-            const response = await api.get('/api/subjects', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-
-            if (response?.data?.success) {
+            const token = JSON.parse(await SecureStore.getItemAsync('userToken'));
+            if (token) {
+                const response = await api.get('/api/subjects', {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
                 setSubjects(response.data.subjects);
-            } else {
-                Alert.alert('오류', response.data.message || '과목 목록을 불러오는 데 실패했습니다.');
             }
         } catch (error) {
             console.error('과목 조회 오류:', error);
-            Alert.alert('오류', '과목을 불러오는 중 문제가 발생했습니다.');
-        } finally {
-            setLoading(false);
+            Alert.alert('오류', '과목을 가져오는 데 문제가 발생했습니다.');
         }
     };
 
@@ -54,49 +27,29 @@ const SubjectScreen = ({ navigation }) => {
         fetchSubjects();
     }, []);
 
-    // 과목 추가
     const addSubject = async () => {
         if (!subjectName) {
-            return Alert.alert('유효성 검사 오류', '과목 이름을 입력해주세요.');
+            return Alert.alert('오류', '과목 이름을 입력해주세요.');
         }
 
         try {
-            let token = JSON.parse(await SecureStore.getItemAsync('userToken'));
-            if (!token) {
-                token = await refreshToken(); // 토큰 갱신 시도
-                if (!token) {
-                    Alert.alert('오류', '로그인 정보가 필요합니다.');
-                    navigation.navigate('Login'); // 로그인 화면으로 이동
-                    return;
-                }
-            }
-
-            const response = await api.post(
-                '/api/subjects/add',
-                { subject_name: subjectName },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-            if (response?.data?.success) {
-                Alert.alert('성공', '과목이 추가되었습니다.');
-                setSubjectName('');
-                fetchSubjects(); // 목록 다시 불러오기
-            } else {
-                Alert.alert('오류', response.data.message || '과목 추가에 실패했습니다.');
+            const token = JSON.parse(await SecureStore.getItemAsync('userToken'));
+            if (token) {
+                await api.post(
+                    '/api/subjects/add',
+                    { subject_name: subjectName },
+                    {
+                        headers: { Authorization: `Bearer ${token}` },
+                    }
+                );
+                fetchSubjects();  // 과목 목록 다시 불러오기
+                setSubjectName('');  // 입력값 초기화
             }
         } catch (error) {
             console.error('과목 추가 오류:', error);
-            Alert.alert('오류', '과목 추가 중 문제가 발생했습니다.');
+            Alert.alert('오류', '과목을 추가하는 데 문제가 발생했습니다.');
         }
     };
-
-    if (loading) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#0066FF" />
-            </View>
-        );
-    }
 
     return (
         <View style={styles.container}>
@@ -146,45 +99,31 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 20,
-        backgroundColor: '#fff',
-    },
-    header: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 20,
+        backgroundColor: '#f8f8f8', // 부드러운 파스텔 배경색
+        justifyContent: 'flex-start',  // 콘텐츠를 상단으로 배치
     },
     input: {
+        height: 50,
+        borderColor: '#ff66b2', // 부드러운 핑크색
         borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        padding: 10,
-        marginBottom: 10,
+        borderRadius: 25, // 둥근 모서리
+        paddingLeft: 20,
+        marginTop: 50, // 인풋 필드 위쪽에 여백 추가
+        marginBottom: 20,
+        fontSize: 18,
+        backgroundColor: '#ffffff', // 깨끗한 흰색
     },
-    button: {
-        backgroundColor: '#0066FF',
-        borderRadius: 8,
-        padding: 10,
+    addButton: {
+        backgroundColor: '#ff66b2', // 핑크색
+        paddingVertical: 15,
+        borderRadius: 25, // 둥근 버튼
         alignItems: 'center',
         marginBottom: 20,
     },
-    buttonText: {
-        color: '#fff',
-        fontSize: 16,
+    addButtonText: {
+        color: '#ffffff',
+        fontSize: 18,
         fontWeight: 'bold',
-    },
-    subjectItem: {
-        padding: 15,
-        backgroundColor: '#f9f9f9',
-        marginBottom: 10,
-        borderRadius: 8,
-    },
-    subjectName: {
-        fontSize: 16,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     subjectCard: {
         backgroundColor: '#ffffff',
@@ -200,6 +139,23 @@ const styles = StyleSheet.create({
     },
     selectedSubjectCard: {
         backgroundColor: '#ffe6f1', // 선택된 과목의 배경색
+    },
+    subjectName: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#ff66b2', // 핑크색 텍스트
+    },
+    weeklyGoalsButton: {
+        backgroundColor: '#ff66b2', // 핑크색
+        paddingVertical: 15,
+        borderRadius: 25, // 둥근 버튼
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    weeklyGoalsButtonText: {
+        color: '#ffffff',
+        fontSize: 18,
+        fontWeight: 'bold',
     },
 });
 

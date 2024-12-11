@@ -12,7 +12,7 @@ const CheckUserInfoScreen = ({ route, navigation }) => {
     const fetchUserInfo = async () => {
         setLoading(true);
         try {
-            let token = await SecureStore.getItemAsync('userToken');
+            let token = JSON.parse(await SecureStore.getItemAsync('userToken'));
             if (!token) {
                 token = await refreshToken(); // 토큰 갱신 시도
                 if (!token) {

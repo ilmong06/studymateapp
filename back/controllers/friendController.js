@@ -46,8 +46,6 @@ const searchFriend = async (req, res) => {
     }
 };
 
-
-
 // 친구 요청
 const sendFriendRequest = async (req, res) => {
     const userId = req.user.id;
@@ -67,6 +65,35 @@ const sendFriendRequest = async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to send friend request.' });
     }
 };
+
+// 친구 요청 목록 불러오기
+const getPlusFriends = async (req, res) => {
+    const userId = req.user.id; // verifyToken 미들웨어에서 설정된 사용자 ID
+
+    try {
+        // 데이터베이스에서 대기 중인 친구 요청 가져오기
+        const query = `
+            SELECT friends.id, friends.user_id, users.username AS from_username, friends.requested_at
+            FROM friends
+            JOIN users ON friends.user_id = users.id
+            WHERE friends.user_id = ? AND friends.status = 'pending'
+            ORDER BY friends.requested_at DESC
+        `;
+        const [results] = await db.executeQuery(query, [userId]);
+
+        // 요청 결과 반환
+        res.status(200).json({
+            success: true,
+            pendingRequests: results,
+        });
+    } catch (error) {
+        console.error('대기 중인 친구 요청 목록 가져오기 오류:', error);
+        res.status(500).json({
+            success: false,
+            message: '대기 중인 친구 요청 목록을 가져오는 중 문제가 발생했습니다.',
+        });
+    }
+}
 
 
 // 친구 삭제
@@ -90,7 +117,7 @@ const deleteFriend = async (req, res) => {
 };
 
 
-module.exports = { getFriends, searchFriend, sendFriendRequest, deleteFriend };
+module.exports = { getFriends, searchFriend, sendFriendRequest, deleteFriend, getPlusFriends };
 
 
 

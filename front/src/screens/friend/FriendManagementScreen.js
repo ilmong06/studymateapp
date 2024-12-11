@@ -15,19 +15,21 @@ import refreshToken from '../../tokenRefresh/refreshToken'; // JWT 갱신 함수
 
 const FriendManagementScreen = () => {
     const [friends, setFriends] = useState([]);
+    const [pendingRequests, setPendingRequests] = useState([]); // 친구 요청 리스트
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const [searchResult, setSearchResult] = useState(null); // 검색 결과 상태
 
     useEffect(() => {
         fetchFriends();
+        fetchPendingRequests();
     }, []);
 
     // 친구 목록 가져오기
     const fetchFriends = async () => {
         setLoading(true);
         try {
-            let accessToken = await SecureStore.getItemAsync('userToken');
+            let accessToken = JSON.parse(await SecureStore.getItemAsync('userToken'));
             if (!accessToken) {
                 accessToken = await refreshToken(); // 토큰 갱신 시도
                 if (!accessToken) {
@@ -52,6 +54,33 @@ const FriendManagementScreen = () => {
         }
     };
 
+    // 친구 요청 목록 가져오기
+    const fetchPendingRequests = async () => {
+        setLoading(true);
+        try {
+            let accessToken = JSON.parse(await SecureStore.getItemAsync('userToken'));
+            if (!accessToken) {
+                accessToken = await refreshToken();
+                if (!accessToken) return;
+            }
+
+            const response = await api.get('/api/friends/pending', {
+                headers: { Authorization: `Bearer ${accessToken}` },
+            });
+
+            if (response?.data?.success) {
+                setPendingRequests(response.data.requests);
+            } else {
+                Alert.alert('오류', '친구 요청 목록을 가져오는 데 실패했습니다.');
+            }
+        } catch (error) {
+            console.error('친구 요청 목록 가져오기 오류:', error);
+            Alert.alert('오류', '친구 요청 목록을 가져오는 중 문제가 발생했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // 친구 검색
     const searchFriend = async () => {
         if (!searchQuery.trim()) {
@@ -62,7 +91,7 @@ const FriendManagementScreen = () => {
         try {
             let accessToken = JSON.parse(await SecureStore.getItemAsync('userToken'));
             if (!accessToken) {
-                accessToken = await refreshToken(); // 토큰 갱신 시도
+                accessToken = await refreshToken();
                 if (!accessToken) return;
             }
 
@@ -71,7 +100,7 @@ const FriendManagementScreen = () => {
             });
 
             if (response?.data?.success) {
-                setSearchResult(response.data.user); // 검색 결과 상태 업데이트
+                setSearchResult(response.data.user);
             } else {
                 setSearchResult(null);
                 Alert.alert('알림', '사용자를 찾을 수 없습니다.');
@@ -82,12 +111,12 @@ const FriendManagementScreen = () => {
         }
     };
 
-    // 친구 요청
+    // 친구 요청 전송
     const sendFriendRequest = async (friendId) => {
         try {
             let accessToken = JSON.parse(await SecureStore.getItemAsync('userToken'));
             if (!accessToken) {
-                accessToken = await refreshToken(); // 토큰 갱신 시도
+                accessToken = await refreshToken();
                 if (!accessToken) return;
             }
 
@@ -99,6 +128,7 @@ const FriendManagementScreen = () => {
 
             if (response?.data?.success) {
                 Alert.alert('알림', '친구 요청을 보냈습니다.');
+                setSearchResult(null); // 검색 결과 초기화
             } else {
                 Alert.alert('오류', response.data.message || '친구 요청에 실패했습니다.');
             }
@@ -108,28 +138,58 @@ const FriendManagementScreen = () => {
         }
     };
 
-    // 친구 삭제
-    const deleteFriend = async (friendId) => {
+    // 친구 요청 수락
+    const acceptRequest = async (requestId) => {
         try {
             let accessToken = JSON.parse(await SecureStore.getItemAsync('userToken'));
             if (!accessToken) {
-                accessToken = await refreshToken(); // 토큰 갱신 시도
+                accessToken = await refreshToken();
                 if (!accessToken) return;
             }
 
-            const response = await api.delete(`/api/friends/${friendId}`, {
-                headers: { Authorization: `Bearer ${accessToken}` },
-            });
+            const response = await api.post(
+                `/api/friends/accept/${requestId}`,
+                {},
+                { headers: { Authorization: `Bearer ${accessToken}` } }
+            );
 
             if (response?.data?.success) {
-                Alert.alert('알림', '친구를 삭제했습니다.');
-                fetchFriends(); // 목록 갱신
+                Alert.alert('알림', '친구 요청을 수락했습니다.');
+                fetchFriends(); // 친구 목록 갱신
+                fetchPendingRequests(); // 요청 목록 갱신
             } else {
-                Alert.alert('오류', response.data.message || '친구 삭제에 실패했습니다.');
+                Alert.alert('오류', response.data.message || '친구 요청 수락에 실패했습니다.');
             }
         } catch (error) {
-            console.error('친구 삭제 오류:', error);
-            Alert.alert('오류', '친구 삭제 중 문제가 발생했습니다.');
+            console.error('친구 요청 수락 오류:', error);
+            Alert.alert('오류', '친구 요청 수락 중 문제가 발생했습니다.');
+        }
+    };
+
+    // 친구 요청 거절
+    const rejectRequest = async (requestId) => {
+        try {
+            let accessToken = await SecureStore.getItemAsync('userToken');
+            if (!accessToken) {
+                accessToken = await refreshToken();
+                if (!accessToken) return;
+            }
+
+            const response = await api.post(
+                `/api/friends/reject/${requestId}`,
+                {},
+                { headers: { Authorization: `Bearer ${accessToken}` } }
+            );
+
+            if (response?.data?.success) {
+                Alert.alert('알림', '친구 요청을 거절했습니다.');
+                fetchPendingRequests(); // 요청 목록 갱신
+            } else {
+                Alert.alert('오류', response.data.message || '친구 요청 거절에 실패했습니다.');
+            }
+        } catch (error) {
+            console.error('친구 요청 거절 오류:', error);
+            Alert.alert('오류', '친구 요청 거절 중 문제가 발생했습니다.');
         }
     };
 
@@ -137,6 +197,7 @@ const FriendManagementScreen = () => {
         <View style={styles.container}>
             <Text style={styles.title}>친구 관리</Text>
 
+            {/* 친구 검색 */}
             <View style={styles.searchContainer}>
                 <TextInput
                     style={styles.searchInput}
@@ -161,6 +222,33 @@ const FriendManagementScreen = () => {
                 </View>
             )}
 
+            {/* 친구 요청 리스트 */}
+            <FlatList
+                data={pendingRequests}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                    <View style={styles.requestCard}>
+                        <Text style={styles.friendName}>{item.username}</Text>
+                        <View style={styles.requestActions}>
+                            <TouchableOpacity
+                                style={styles.acceptButton}
+                                onPress={() => acceptRequest(item.id)}
+                            >
+                                <Text style={styles.acceptButtonText}>수락</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.rejectButton}
+                                onPress={() => rejectRequest(item.id)}
+                            >
+                                <Text style={styles.rejectButtonText}>거절</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
+                ListEmptyComponent={() => <Text style={styles.emptyText}>받은 친구 요청이 없습니다.</Text>}
+            />
+
+            {/* 친구 목록 */}
             {loading ? (
                 <ActivityIndicator size="large" color="#0066FF" />
             ) : (
@@ -178,9 +266,7 @@ const FriendManagementScreen = () => {
                             </TouchableOpacity>
                         </View>
                     )}
-                    ListEmptyComponent={() => (
-                        <Text style={styles.emptyText}>등록된 친구가 없습니다.</Text>
-                    )}
+                    ListEmptyComponent={() => <Text style={styles.emptyText}>등록된 친구가 없습니다.</Text>}
                 />
             )}
         </View>
@@ -188,6 +274,36 @@ const FriendManagementScreen = () => {
 };
 
 const styles = StyleSheet.create({
+    // Same styles as in the original code with additional styles for requests
+    requestCard: {
+        padding: 15,
+        backgroundColor: '#f0f4f7',
+        borderRadius: 10,
+        marginVertical: 10,
+    },
+    requestActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 10,
+    },
+    acceptButton: {
+        backgroundColor: '#4CAF50',
+        padding: 10,
+        borderRadius: 5,
+    },
+    acceptButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+    },
+    rejectButton: {
+        backgroundColor: '#FF6B6B',
+        padding: 10,
+        borderRadius: 5,
+    },
+    rejectButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+    },
     container: {
         flex: 1,
         backgroundColor: '#fff',

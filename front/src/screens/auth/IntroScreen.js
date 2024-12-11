@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
     View,
     Text,
@@ -6,62 +6,9 @@ import {
     StyleSheet,
     SafeAreaView,
     Image,
-    ActivityIndicator,
 } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
-import api from '../../api/api';
 
 const IntroScreen = ({ navigation }) => {
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const checkAutoLogin = async () => {
-            try {
-                // SecureStore에서 토큰 가져오기
-                const accessToken = await SecureStore.getItemAsync('userToken');
-                const refreshToken = await SecureStore.getItemAsync('refreshToken');
-
-                if (!accessToken) {
-                    console.log('Access Token이 없습니다. Refresh Token 확인 중...');
-                    if (!refreshToken) {
-                        console.log('Refresh Token도 없습니다. 자동 로그인 중단.');
-                        return; // 토큰이 없으면 자동 로그인을 수행하지 않음
-                    }
-
-                    // Access Token 갱신 시도
-                    const response = await api.post('/auth/refresh', { refreshToken });
-
-                    if (response.data && response.data.success) {
-                        const newAccessToken = response.data.accessToken;
-                        await SecureStore.setItemAsync('userToken', newAccessToken);
-                        console.log('Access Token 갱신 성공.');
-                    } else {
-                        console.log('Refresh Token 갱신 실패:', response.data.message);
-                        return;
-                    }
-                }
-
-                // Access Token이 존재하거나 갱신되었다면 홈 화면으로 이동
-                navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'HomeTabs' }], // Stack.Navigator에 등록된 이름과 일치시킵니다.
-                });
-            } catch (error) {
-                console.error('자동 로그인 체크 실패:', error);
-            }
-        };
-
-        checkAutoLogin();
-    }, []);
-
-    if (loading) {
-        return (
-            <SafeAreaView style={styles.container}>
-                <ActivityIndicator size="large" color="#0066FF" />
-            </SafeAreaView>
-        );
-    }
-
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.content}>

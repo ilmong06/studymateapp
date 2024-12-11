@@ -10,7 +10,8 @@ const {
     register,
     getUserInfo,
     refreshToken,
-    searchId
+    searchId,
+    logout
 } = require('../controllers/authController');
 
 const router = express.Router();
@@ -47,5 +48,8 @@ router.post('/refresh', refreshToken);
 
 // 아이디 찾기 이메일 인증 코드 검증
 router.post('/verify-code-search', searchId);
+
+// 로그아웃
+router.post('/logout', logout);
 
 module.exports = router;

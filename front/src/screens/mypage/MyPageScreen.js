@@ -5,6 +5,7 @@ import api from '../../api/api';
 import refreshToken from '../../tokenRefresh/refreshToken';
 
 const MyPageScreen = ({ navigation }) => {
+    const [userId, setUserId] = useState('');
     const [userName, setUserName] = useState('');
     const [userEmail, setUserEmail] = useState('');
     const [loading, setLoading] = useState(true);
@@ -13,7 +14,7 @@ const MyPageScreen = ({ navigation }) => {
     const fetchUserInfo = async () => {
         setLoading(true);
         try {
-            let token = await SecureStore.getItemAsync('userToken');
+            let token = JSON.parse(await SecureStore.getItemAsync('userToken'));
             if (!token) {
                 token = await refreshToken(); // 토큰 갱신 시도
                 if (!token) {
@@ -23,14 +24,15 @@ const MyPageScreen = ({ navigation }) => {
                 }
             }
 
-            const response = await api.get('/api/user/getUserInfo', {
+            const response = await api.get('/api/auth/user-info', {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
             });
 
             if (response?.data?.success) {
-                setUserName(response.data.name || '사용자 이름');
+                setUserId(response.data.userId);
+                setUserName(response.data.username || '사용자 이름');
                 setUserEmail(response.data.email || 'user@example.com');
             } else {
                 Alert.alert('오류', response.data.message || '사용자 정보를 불러오지 못했습니다.');
@@ -47,7 +49,7 @@ const MyPageScreen = ({ navigation }) => {
     const handleLogout = async () => {
         setLoading(true);
         try {
-            let token = await SecureStore.getItemAsync('userToken');
+            let token = JSON.parse(await SecureStore.getItemAsync('userToken'));
             if (!token) {
                 token = await refreshToken(); // 토큰 갱신 시도
                 if (!token) {

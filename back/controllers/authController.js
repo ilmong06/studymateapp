@@ -527,13 +527,44 @@ const getUserInfo = async (req, res) => {
         // 사용자 정보 반환
         res.status(200).json({
             success: true,
+            id: user.id,
             username: user.username,
+            email: user.email,
         });
     } catch (error) {
         console.error('사용자 정보 가져오기 오류:', error);
         res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
     }
 };
+
+const logout = async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1]; // Bearer 토큰에서 실제 토큰 추출
+
+    if (!token) {
+        return res.status(401).json({ success: false, message: '토큰이 제공되지 않았습니다.' });
+    }
+
+    try {
+        // 토큰의 유효성 검사
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // 토큰 무효화 처리
+        await db.executeQuery(
+            `INSERT INTO invalid_tokens (token, user_id, expires_at) VALUES (?, ?, ?)`,
+            [token, decoded.id, new Date(decoded.exp * 1000)] // JWT 만료 시간을 저장
+        );
+
+        res.status(200).json({ success: true, message: 'Logout successful' });
+    } catch (error) {
+        console.error('로그아웃 처리 오류:', error);
+
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ success: false, message: '유효하지 않은 토큰입니다.' });
+        }
+
+        res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+    }
+}
 
 module.exports = {
     login,
@@ -547,5 +578,6 @@ module.exports = {
     refreshToken,
     getUserInfo,
     corsOptions,
-    searchId
+    searchId,
+    logout
 };

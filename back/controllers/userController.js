@@ -7,7 +7,7 @@ const updateUser = async (req, res) => {
     try {
         // 현재 비밀번호 확인
         const query = 'SELECT password_hash FROM users WHERE username = ?';
-        const [user] = await db.executeQuery(query, [req.user]);
+        const user = await db.executeQuery(query, [req.user]);
 
         if (!user || !bcrypt.compareSync(currentPassword, user.password_hash)) {
             return res.status(401).json({ success: false, message: '현재 비밀번호가 일치하지 않습니다.' });
@@ -50,7 +50,7 @@ const deleteUser = async (req, res) => {
     try {
         // 비밀번호 확인
         const query = 'SELECT password_hash FROM users WHERE username = ?';
-        const [user] = await db.executeQuery(query, [req.user]);
+        const user = await db.executeQuery(query, [req.user]);
 
         if (!user || !bcrypt.compareSync(password, user.password_hash)) {
             return res.status(401).json({ success: false, message: '비밀번호가 일치하지 않습니다.' });

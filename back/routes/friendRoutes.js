@@ -6,6 +6,7 @@ const {
     searchFriend,
     sendFriendRequest,
     deleteFriend,
+    getPlusFriends,
 } = require('../controllers/friendController');
 
 // 친구 목록 불러오기
@@ -19,6 +20,9 @@ router.post('/request', verifyToken, sendFriendRequest);
 
 // 친구 삭제
 router.delete('/:friendId', verifyToken, deleteFriend);
+
+// 친구 요청 목록 불러오기
+router.get('/pending', verifyToken, getPlusFriends);
 
 module.exports = router;
 

@@ -5,6 +5,7 @@ const {
     deleteUser,
 } = require('../controllers/userController');
 const verifyToken = require('../middlewares/authMiddleware');
+const {getUserInfo} = require("../controllers/authController");
 
 const router = express.Router();
 

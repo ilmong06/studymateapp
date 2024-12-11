@@ -7,17 +7,18 @@ exports.startTimer = async (req, res) => {
 
     try {
         // 이미 실행 중인 타이머가 있는지 확인
-        const [existingTimer] = await db.executeQuery(
+        const existingTimer = await db.executeQuery(
             'SELECT * FROM timers WHERE user_id = ? AND subject_id = ? AND is_running = TRUE',
             [user_id, subject_id]
         );
 
-        if (existingTimer.length > 0) {
+        // 배열 여부 확인 후 length 체크
+        if (Array.isArray(existingTimer) && existingTimer.length > 0) {
             return res.status(400).json({ success: false, message: '이미 실행 중인 타이머가 있습니다.' });
         }
 
         // 새로운 타이머 시작
-        const [result] = await db.executeQuery(
+        const result = await db.executeQuery(
             'INSERT INTO timers (user_id, subject_id, is_running, start_time) VALUES (?, ?, TRUE, CURRENT_TIMESTAMP)',
             [user_id, subject_id]
         );
@@ -63,7 +64,7 @@ exports.getTimers = async (req, res) => {
     const user_id = req.user.id;
 
     try {
-        const [timers] = await db.executeQuery(
+        const timers = await db.executeQuery(
             'SELECT * FROM timers WHERE user_id = ? ORDER BY created_at DESC',
             [user_id]
         );
