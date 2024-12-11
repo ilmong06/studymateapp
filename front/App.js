@@ -15,7 +15,9 @@ import NaverLoginScreen from "./src/screens/auth/NaverLoginScreen ";
 import KakaoLoginScreen from "./src/screens/auth/KakaoLoginScreen";
 import ChatListScreen from './src/screens/chat/ChatListScreen';
 import LearningDashboard from './src/screens/study/LearningDashboard';
-
+import SubjectPage from './src/screens/study/SubjectPage';
+import TimerPage from './src/screens/study/TimerPage';
+import WeeklyGoalsPage from './src/screens/study/WeeklyGoalsPage';
 // Navigation Stacks
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -74,6 +76,9 @@ const AppNavigator = () => {
             <Stack.Screen name="HomeTabs" component={HomeTabs} />
             <Stack.Screen name="HomeScreen" component={HomeScreen} />
             <Stack.Screen name="LearningDashboard" component={LearningDashboard} />
+            <Stack.Screen name="SubjectPage" component={SubjectPage} />
+            <Stack.Screen name="TimerPage" component={TimerPage} />
+            <Stack.Screen name="WeeklyGoalsPage" component={WeeklyGoalsPage} />
         </Stack.Navigator>
     );
 };

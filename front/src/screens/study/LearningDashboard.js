@@ -3,61 +3,49 @@ import {
   View,
   Text,
   TextInput,
-  FlatList,
   TouchableOpacity,
   StyleSheet,
   Alert,
   ActivityIndicator,
+  ScrollView, // ScrollView 추가
 } from "react-native";
 import * as SecureStore from "expo-secure-store";
-import api from "../../api/api"; // API 모듈 가져오기
+import { Calendar } from "react-native-calendars";
+import { Checkbox } from "react-native-paper";
+import api from "../../api/api";
 
-const LearningDashboard = () => {
+const LearningDashboard = ({ navigation }) => {
   const [goals, setGoals] = useState([]);
   const [newGoal, setNewGoal] = useState("");
-  const [goalType, setGoalType] = useState("daily");
-  const [studyTime, setStudyTime] = useState("");
-  const [timeLogs, setTimeLogs] = useState([]);
+  const [selectedDate, setSelectedDate] = useState("");
   const [loading, setLoading] = useState(true);
-  const [username, setUsername] = useState(""); // 사용자 이름 저장
+  const [username, setUsername] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-
-        // SecureStore에서 토큰 가져오기
         const token = await SecureStore.getItemAsync("userToken");
         if (!token) {
           Alert.alert("오류", "로그인 토큰을 찾을 수 없습니다.");
           return;
         }
 
-        // 사용자 정보 가져오기
         const userInfoResponse = await api.get("/api/auth/user-info", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (userInfoResponse.data && userInfoResponse.data.success) {
+        if (userInfoResponse?.data?.success) {
           setUsername(userInfoResponse.data.username);
-        } else {
-          Alert.alert("오류", "사용자 정보를 가져오지 못했습니다.");
         }
 
-        // 학습 목표와 시간 데이터를 가져오기
         const goalsResponse = await api.get("/api/study/goals", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        const timeLogsResponse = await api.get("/api/study/time-logs", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
         setGoals(goalsResponse.data);
-        setTimeLogs(timeLogsResponse.data);
       } catch (error) {
         console.error("데이터 가져오기 오류:", error);
-        Alert.alert("오류", "데이터를 가져오는 중 문제가 발생했습니다.");
       } finally {
         setLoading(false);
       }
@@ -66,71 +54,64 @@ const LearningDashboard = () => {
     fetchData();
   }, []);
 
-  // 새로운 목표 추가
+  const handleDayPress = async (day) => {
+    setSelectedDate(day.dateString);
+  };
+
   const addGoal = async () => {
-    if (!newGoal.trim()) return Alert.alert("유효성 검사 오류", "목표를 입력해주세요.");
+    if (!newGoal.trim()) {
+      return Alert.alert("유효성 검사 오류", "목표를 입력해주세요.");
+    }
+
+    if (!selectedDate) {
+      return Alert.alert("날짜 선택 오류", "목표를 입력할 날짜를 선택해주세요.");
+    }
+
     try {
       const token = await SecureStore.getItemAsync("userToken");
       const response = await api.post(
         "/api/study/goals",
         {
           goal_name: newGoal,
-          goal_type: goalType,
+          goal_type: "daily",
+          study_date: selectedDate,
         },
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+
       setGoals([...goals, response.data]);
       setNewGoal("");
+      Alert.alert("성공", "목표를 추가했습니다.");
     } catch (error) {
-      console.error("목표 추가 오류:", error);
       Alert.alert("오류", "새 목표를 추가하는데 실패했습니다.");
     }
   };
 
-  // 목표 완료 상태 변경
-  const toggleGoalCompletion = async (goalId, isCompleted) => {
+  const toggleCheckbox = async (goalId, currentStatus) => {
     try {
       const token = await SecureStore.getItemAsync("userToken");
-      await api.put(
-        `/api/study/goals/${goalId}`,
-        { is_completed: !isCompleted },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setGoals(
-        goals.map((goal) =>
-          goal.id === goalId ? { ...goal, is_completed: !isCompleted } : goal
-        )
-      );
-    } catch (error) {
-      console.error("목표 상태 변경 오류:", error);
-      Alert.alert("오류", "목표 상태를 업데이트하는데 실패했습니다.");
-    }
-  };
 
-  // 학습 시간 기록
-  const logStudyTime = async () => {
-    if (!studyTime) return Alert.alert("유효성 검사 오류", "학습 시간을 입력해주세요.");
-    try {
-      const token = await SecureStore.getItemAsync("userToken");
-      await api.post(
-        "/api/study/time-logs",
-        {
-          study_date: new Date().toISOString().split("T")[0],
-          study_time_minutes: parseInt(studyTime, 10),
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+      const response = await api.put(
+        `/api/study/goals/${goalId}`,
+        { is_completed: !currentStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      setStudyTime("");
-      fetchData();
+
+      if (response?.data?.success) {
+        Alert.alert("변경 완료", "체크 상태가 저장되었습니다.");
+        setGoals(
+          goals.map((goal) =>
+            goal.id === goalId ? { ...goal, is_completed: !currentStatus } : goal
+          )
+        );
+      } else {
+        Alert.alert("오류", "체크 상태 저장 중 문제가 발생했습니다.");
+      }
     } catch (error) {
-      console.error("학습 시간 기록 오류:", error);
-      Alert.alert("오류", "학습 시간을 기록하는데 실패했습니다.");
+      console.error("Checkbox toggle error:", error);
+      Alert.alert("오류", "서버와 연결 중 문제가 발생했습니다.");
     }
   };
 
@@ -143,87 +124,109 @@ const LearningDashboard = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>안녕하세요, {username}님!</Text>
-      <Text style={styles.subHeader}>학습 대시보드</Text>
-
-      {/* 학습 목표 섹션 */}
-      <View style={styles.section}>
-        <Text style={styles.subHeader}>학습 목표</Text>
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="새 목표 입력"
-            value={newGoal}
-            onChangeText={(text) => setNewGoal(text)}
-          />
-          <TouchableOpacity onPress={addGoal} style={styles.button}>
-            <Text style={styles.buttonText}>추가</Text>
-          </TouchableOpacity>
-        </View>
-        <FlatList
-          data={goals}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.goalItem}>
-              <TouchableOpacity onPress={() => toggleGoalCompletion(item.id, item.is_completed)}>
-                <Text style={item.is_completed ? styles.completedGoal : styles.incompleteGoal}>
-                  {item.goal_name} ({item.goal_type})
-                </Text>
-              </TouchableOpacity>
+    <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <View style={styles.container}>
+        <Text style={styles.header}>안녕하세요, {username}님!</Text>
+        <Calendar
+          onDayPress={handleDayPress}
+          markedDates={{
+            [selectedDate]: { selected: true, selectedColor: '#007BFF' },
+          }}
+          style={{ height: 350, width: '100%' }}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="새 목표 입력"
+          value={newGoal}
+          onChangeText={(text) => setNewGoal(text)}
+        />
+        <TouchableOpacity onPress={addGoal} style={styles.button}>
+          <Text style={styles.buttonText}>추가</Text>
+        </TouchableOpacity>
+        <Text style={styles.subHeader}>목표 목록</Text>
+        {goals.length === 0 ? (
+          <Text style={styles.noGoals}>목표가 없습니다.</Text>
+        ) : (
+          goals.map((goal) => (
+            <View key={goal.id} style={styles.goalItem}>
+              <Checkbox
+                status={goal.is_completed ? "checked" : "unchecked"}
+                onPress={() => toggleCheckbox(goal.id, goal.is_completed)}
+              />
+              <Text style={goal.is_completed ? styles.strikethrough : null}>
+                {goal.goal_name}
+              </Text>
             </View>
-          )}
-        />
+          ))
+        )}
+        {/* 주간 목표로 이동하는 버튼 */}
+        <TouchableOpacity
+          style={styles.weeklyGoalsButton}
+          onPress={() => navigation.navigate("WeeklyGoalsPage")} // 주간 목표 페이지로 이동
+        >
+          <Text style={styles.weeklyGoalsButtonText}>📅 주간 목표</Text>
+        </TouchableOpacity>
       </View>
-
-      {/* 학습 시간 섹션 */}
-      <View style={styles.section}>
-        <Text style={styles.subHeader}>학습 시간 기록</Text>
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="시간(분) 입력"
-            keyboardType="numeric"
-            value={studyTime}
-            onChangeText={(text) => setStudyTime(text)}
-          />
-          <TouchableOpacity onPress={logStudyTime} style={styles.button}>
-            <Text style={styles.buttonText}>기록</Text>
-          </TouchableOpacity>
-        </View>
-        <FlatList
-          data={timeLogs}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <Text>
-              {item.study_date}: {item.study_time_minutes}분
-            </Text>
-          )}
-        />
-      </View>
-    </View>
+    </ScrollView>
   );
 };
 
-export default LearningDashboard;
-
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: "#fff" },
-  header: { fontSize: 24, fontWeight: "bold", marginBottom: 10 },
-  subHeader: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
-  section: { marginBottom: 20 },
-  inputContainer: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
-    padding: 10,
-    marginRight: 10,
+  scrollContainer: {
+    flexGrow: 1, // 스크롤 영역 전체를 꽉 채우도록 설정
+    backgroundColor: "#f9f9f9",
   },
-  button: { backgroundColor: "#007BFF", padding: 10, borderRadius: 5 },
-  buttonText: { color: "#fff", fontWeight: "bold" },
-  goalItem: { marginBottom: 10 },
-  completedGoal: { textDecorationLine: "line-through", color: "green" },
-  incompleteGoal: { color: "black" },
+  container: {
+    padding: 20,
+  },
+  header: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#007BFF",
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 10,
+  },
+  button: {
+    backgroundColor: "#007BFF",
+    padding: 10,
+    borderRadius: 5,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  subHeader: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  goalItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  strikethrough: {
+    textDecorationLine: "line-through",
+  },
+  noGoals: {
+    fontStyle: "italic",
+    color: "gray",
+  },
+  weeklyGoalsButton: {
+    backgroundColor: "#007BFF", // 핑크색
+    paddingVertical: 15,
+    borderRadius: 25, // 둥근 버튼
+    alignItems: "center",
+    marginTop: 20,
+  },
+  weeklyGoalsButtonText: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
 });
+
+export default LearningDashboard;
