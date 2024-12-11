@@ -7,6 +7,8 @@ const TimerPage = ({ route, navigation }) => {
     const { subjectId } = route.params;  // 네비게이션을 통해 전달된 subjectId
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const [timerId, setTimerId] = useState(null);
+    const [startTime, setStartTime] = useState(null);  // 타이머 시작 시간
+    const [elapsedTime, setElapsedTime] = useState(0);  // 경과 시간 (초)
 
     useEffect(() => {
         // 타이머 상태 확인
@@ -23,6 +25,7 @@ const TimerPage = ({ route, navigation }) => {
                     if (activeTimer) {
                         setIsTimerRunning(true);
                         setTimerId(activeTimer.id);  // 활성화된 타이머 ID 저장
+                        setStartTime(new Date(activeTimer.start_time));  // 타이머 시작 시간 설정
                     }
                 }
             } catch (error) {
@@ -34,6 +37,22 @@ const TimerPage = ({ route, navigation }) => {
         checkTimerStatus();
     }, [subjectId]);
 
+    useEffect(() => {
+        // 타이머가 실행 중이라면, 경과 시간 업데이트
+        let interval;
+        if (isTimerRunning && startTime) {
+            interval = setInterval(() => {
+                const currentTime = new Date();
+                const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);  // 경과 시간 (초) 계산
+                setElapsedTime(elapsedSeconds);
+            }, 1000);
+        }
+
+        return () => {
+            clearInterval(interval);  // 타이머 종료 시 interval 클리어
+        };
+    }, [isTimerRunning, startTime]);
+
     const startTimer = async () => {
         try {
             const token = await SecureStore.getItemAsync('userToken');
@@ -44,6 +63,7 @@ const TimerPage = ({ route, navigation }) => {
                 if (response.data.success) {
                     setIsTimerRunning(true);
                     setTimerId(response.data.timerId);  // 서버에서 반환된 타이머 ID 저장
+                    setStartTime(new Date());  // 타이머 시작 시간을 현재 시간으로 설정
                 } else {
                     Alert.alert('오류', response.data.message);
                 }
@@ -78,6 +98,7 @@ const TimerPage = ({ route, navigation }) => {
         <View>
             <Text>과목 ID: {subjectId}</Text>
             <Text>{isTimerRunning ? '타이머가 실행 중입니다.' : '타이머가 정지되었습니다.'}</Text>
+            <Text>경과 시간: {elapsedTime}초</Text> {/* 경과 시간 표시 */}
             <Button
                 title={isTimerRunning ? '타이머 정지' : '타이머 시작'}
                 onPress={isTimerRunning ? stopTimer : startTimer}

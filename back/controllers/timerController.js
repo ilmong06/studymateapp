@@ -54,6 +54,7 @@ exports.getTimers = async (req, res) => {
 
     try {
         const [timers] = await pool.query('SELECT * FROM timers WHERE user_id = ?', [user_id]);
+
         res.json({ success: true, timers });
     } catch (error) {
         console.error('타이머 조회 오류:', error);
